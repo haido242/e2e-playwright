@@ -56,41 +56,41 @@ test('Đăng nhập sai hiển thị lỗi', async ({ page }) => {
   expect(errorMessage).toContain('Email hoặc mật khẩu không hợp lệ');
 });
 
-// test('Thêm thư mục', async ({ page }) => {
-//   // Đăng nhập trước
-//   const credentials = validateCredentials('tpa');
-//   await page.goto('/login', { waitUntil: 'domcontentloaded' });
-//   await page.fill('#email', credentials.email);
-//   await page.fill('#password', credentials.password);
-//   await page.click('button[type=submit]');
-//   await page.waitForURL(/folders/);
-//   console.log('Đã đăng nhập thành công, trên trang folders.');
+test('Thêm thư mục', async ({ page }) => {
+  // Đăng nhập trước
+  const credentials = validateCredentials('tpa');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.fill('#email', credentials.email);
+  await page.fill('#password', credentials.password);
+  await page.click('button[type=submit]');
+  await page.waitForURL(/folders/);
+  console.log('Đã đăng nhập thành công, trên trang folders.');
 
-//   // Chờ nút "Thêm Thư Mục" xuất hiện và click
-//   const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
-//   await page.waitForSelector(addButtonSelector, { timeout: 20000 });
-//   await page.click(addButtonSelector);
-//   console.log('Đã click nút "Thêm Thư Mục".');
+  // Chờ nút "Thêm Thư Mục" xuất hiện và click
+  const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
+  await page.waitForSelector(addButtonSelector, { timeout: 20000 });
+  await page.click(addButtonSelector);
+  console.log('Đã click nút "Thêm Thư Mục".');
 
-//   // Chờ drawer xuất hiện
-//   const drawerSelector = '.ant-drawer-content';
-//   await page.waitForSelector(drawerSelector, { timeout: 5000 });
-//   console.log('Drawer thêm thư mục đã xuất hiện.');
+  // Chờ drawer xuất hiện
+  const drawerSelector = '.ant-drawer-content';
+  await page.waitForSelector(drawerSelector, { timeout: 5000 });
+  console.log('Drawer thêm thư mục đã xuất hiện.');
 
-//   // Điền tên thư mục và submit
-//   const folderName = `E2E Test Folder ${Date.now()}`;
-//   await page.fill(`${drawerSelector} input[id="name"]`, folderName);
-//   await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
-//   await page.click(`${drawerSelector} button:has-text("Tạo")`);
-//   console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
+  // Điền tên thư mục và submit
+  const folderName = `E2E Test Folder ${new Date().toLocaleString()}`;
+  await page.fill(`${drawerSelector} input[id="name"]`, folderName);
+  await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
+  await page.click(`${drawerSelector} button:has-text("Tạo")`);
+  console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
 
-//   // kiểm tra có được điều hướng tới trang thư mục mới không
-//   await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
-//   const currentURL = page.url();
-//   console.log('Đã được điều hướng tới URL:', currentURL);
-//   expect(currentURL).toMatch(/folders\/\d+/);
-//   console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
-// });
+  // kiểm tra có được điều hướng tới trang thư mục mới không
+  await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
+  const currentURL = page.url();
+  console.log('Đã được điều hướng tới URL:', currentURL);
+  expect(currentURL).toMatch(/folders\/\d+/);
+  console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
+});
 
 test('Tải tài liệu lên', async ({ page }) => {
   // Tăng timeout cho test này vì upload có thể mất 2-3 phút
