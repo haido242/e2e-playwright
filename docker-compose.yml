@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  e2e:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - BASE_URL=${BASE_URL}
+      - PW_PROJECTS=${PW_PROJECTS:-chromium}
+    volumes:
+      - ./artifacts:/artifacts
+    shm_size: "1gb"
