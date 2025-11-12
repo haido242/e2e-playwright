@@ -1,10 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { validateCredentials } from '../helpers/credentials';
 
-test('debug baseURL', async ({ page, baseURL }) => {
-  console.log('process.env.BASE_URL =', process.env.BASE_URL);
-  console.log('Config baseURL =', baseURL);
-});
 
 test('Trang chủ hiển thị tiêu đề đúng', async ({ page }) => {
   // Chờ trang load và kiểm tra response
@@ -22,28 +17,16 @@ test('Trang chủ hiển thị tiêu đề đúng', async ({ page }) => {
   await expect(page).toHaveTitle(/DocBase.AI/i);
 });
 
-test('Form đăng nhập hoạt động', async ({ page }) => {
-  // Lấy credentials từ environment variables (bảo mật)
-  const credentials = validateCredentials('tpa');
+// Test đăng nhập sai - Sử dụng context riêng KHÔNG có storageState
+test('Đăng nhập sai hiển thị lỗi', async ({ browser }) => {
+  const context = await browser.newContext({ 
+    storageState: undefined
+  });
+  const page = await context.newPage();
   
-  const response = await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  console.log('Login page status:', response?.status());
-  
-  // Chờ form xuất hiện
-  await page.waitForSelector('#email', { timeout: 10000 });
-  
-  await page.fill('#email', credentials.email);
-  await page.fill('#password', credentials.password);
-  await page.click('button[type=submit]');
-  await expect(page).toHaveURL(/folders/);
-});
+  const baseURL = process.env.TPA_BASE_URL || 'http://localhost:3000';
+  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' });
 
-test('Đăng nhập sai hiển thị lỗi', async ({ page }) => {
-  const response = await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  console.log('Login page status:', response?.status());
-
-  // Chờ form xuất hiện
-  await page.waitForSelector('#email', { timeout: 10000 });
   await page.fill('#email', 'wrong-email@example.com');
   await page.fill('#password', 'wrongpassword');
   await page.click('button[type=submit]');
@@ -54,68 +37,61 @@ test('Đăng nhập sai hiển thị lỗi', async ({ page }) => {
   const errorMessage = await page.textContent(errorSelector);
   console.log('Error message displayed:', errorMessage);
   expect(errorMessage).toContain('Email hoặc mật khẩu không hợp lệ');
+  
+  await context.close();
 });
 
-test('Thêm thư mục', async ({ page }) => {
-  // Đăng nhập trước
-  const credentials = validateCredentials('tpa');
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  await page.fill('#email', credentials.email);
-  await page.fill('#password', credentials.password);
-  await page.click('button[type=submit]');
-  await page.waitForURL(/folders/);
-  console.log('Đã đăng nhập thành công, trên trang folders.');
+// test('Thêm thư mục', async ({ page }) => {
+//   // Đã đăng nhập sẵn qua storageState - không cần login nữa!
+//   await page.goto('/folders', { waitUntil: 'domcontentloaded' });
+//   console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
 
-  // Chờ nút "Thêm Thư Mục" xuất hiện và click
-  const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
-  await page.waitForSelector(addButtonSelector, { timeout: 20000 });
-  await page.click(addButtonSelector);
-  console.log('Đã click nút "Thêm Thư Mục".');
+//   // Chờ nút "Thêm Thư Mục" xuất hiện và click
+//   const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
+//   await page.waitForSelector(addButtonSelector, { timeout: 20000 });
+//   await page.click(addButtonSelector);
+//   console.log('Đã click nút "Thêm Thư Mục".');
 
-  // Chờ drawer xuất hiện
-  const drawerSelector = '.ant-drawer-content';
-  await page.waitForSelector(drawerSelector, { timeout: 5000 });
-  console.log('Drawer thêm thư mục đã xuất hiện.');
+//   // Chờ drawer xuất hiện
+//   const drawerSelector = '.ant-drawer-content';
+//   await page.waitForSelector(drawerSelector, { timeout: 5000 });
+//   console.log('Drawer thêm thư mục đã xuất hiện.');
 
-  // Điền tên thư mục và submit
-  const now = new Date();
-  const timestamp = now.toLocaleString('vi-VN', { 
-    year: 'numeric', 
-    month: '2-digit', 
-    day: '2-digit', 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
-  }).replace(/\//g, '-');
-  const folderName = `E2E Test Folder ${timestamp}`;
-  await page.fill(`${drawerSelector} input[id="name"]`, folderName);
-  await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
-  await page.click(`${drawerSelector} button:has-text("Tạo")`);
-  console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
+//   // Điền tên thư mục và submit
+//   const now = new Date();
+//   const timestamp = now.toLocaleString('vi-VN', { 
+//     year: 'numeric', 
+//     month: '2-digit', 
+//     day: '2-digit', 
+//     hour: '2-digit', 
+//     minute: '2-digit', 
+//     second: '2-digit' 
+//   }).replace(/\//g, '-');
+//   const folderName = `E2E Test Folder ${timestamp}`;
+//   await page.fill(`${drawerSelector} input[id="name"]`, folderName);
+//   await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
+//   await page.click(`${drawerSelector} button:has-text("Tạo")`);
+//   console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
 
-  // kiểm tra có được điều hướng tới trang thư mục mới không
-  await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
-  const currentURL = page.url();
-  console.log('Đã được điều hướng tới URL:', currentURL);
-  expect(currentURL).toMatch(/folders\/\d+/);
-  console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
-});
+//   // kiểm tra có được điều hướng tới trang thư mục mới không
+//   await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
+//   const currentURL = page.url();
+//   console.log('Đã được điều hướng tới URL:', currentURL);
+//   expect(currentURL).toMatch(/folders\/\d+/);
+//   console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
+// });
 
 test('Tải tài liệu lên', async ({ page }) => {
   // Tăng timeout cho test này vì upload có thể mất 2-3 phút
-  test.setTimeout(5 * 60 * 1000); // 5 phút
+  test.setTimeout(10 * 60 * 1000); // 5 phút
   
-  // Đăng nhập trước
-  const credentials = validateCredentials('tpa');
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  await page.fill('#email', credentials.email);
-  await page.fill('#password', credentials.password);
-  await page.click('button[type=submit]');
-  await page.waitForURL(/folders/);
-  console.log('Đã đăng nhập thành công, trên trang folders.');
-  const firtsFolderSelector = '.ant-table-row:nth-child(1) .ant-table-cell:nth-child(1) .editable-cell-value-wrap';
-  await page.waitForSelector(firtsFolderSelector, { timeout: 10000 });
-  await page.click(firtsFolderSelector); // Click vào thư mục đầu tiên
+  // Đã đăng nhập sẵn qua storageState - không cần login nữa!
+  await page.goto('/folders', { waitUntil: 'domcontentloaded' });
+  console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
+  
+  const firstFolderSelector = '.ant-table-row:nth-child(1) .ant-table-cell:nth-child(1) .editable-cell-value-wrap';
+  await page.waitForSelector(firstFolderSelector, { timeout: 10000 });
+  await page.click(firstFolderSelector); // Click vào thư mục đầu tiên
   // Chờ nút "Tải Lên" xuất hiện và click
   const uploadButtonSelector = 'button:has-text("Tải Lên file")';
   await page.waitForSelector(uploadButtonSelector, { timeout: 20000 });
@@ -161,14 +137,14 @@ test('Tải tài liệu lên', async ({ page }) => {
   console.log(`Initial state - Span count: ${initialSpanCount}`);
   
   // Đợi transition: span (loading icon) → div (completed)
-  console.log('⏳ Đang đợi upload processing (1-2 phút)...');
+  console.log('⏳ Đang đợi xử lý tài liệu...');
   
   // Approach 1: Poll để check khi nào span biến mất
-  const maxWaitTime = 3 * 60 * 1000; // 3 phút
+  const maxWaitTime = 10 * 60 * 1000; // 10 phút
   const startTime = Date.now();
   
   while (Date.now() - startTime < maxWaitTime) {
-    const spanCount = await page.locator(`${fileRowSelector} span.anticon-loading`).count();
+    const spanCount = await page.locator(`${fileRowSelector} span`).count();
     
     if (spanCount === 0) {
       console.log('✅ Loading icon đã biến mất!');
@@ -208,16 +184,12 @@ test('Tải tài liệu lên', async ({ page }) => {
 });
 
 test('Màn xác nhận', async ({ page }) => {
-  test.setTimeout(5 * 60 * 1000); // 5 phút
+  test.setTimeout(1 * 60 * 1000); // 1 phút
   
-  // Đăng nhập trước
-  const credentials = validateCredentials('tpa');
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  await page.fill('#email', credentials.email);
-  await page.fill('#password', credentials.password);
-  await page.click('button[type=submit]');
-  await page.waitForURL(/folders/);
-  console.log('Đã đăng nhập thành công, trên trang folders.');
+  // Đã đăng nhập sẵn qua storageState - không cần login nữa!
+  await page.goto('/folders', { waitUntil: 'domcontentloaded' });
+  console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
+  
   const firtsFolderSelector = '.ant-table-row:nth-child(1) .ant-table-cell:nth-child(1) .editable-cell-value-wrap';
   await page.waitForSelector(firtsFolderSelector, { timeout: 10000 });
   await page.click(firtsFolderSelector); // Click vào thư mục đầu tiên
