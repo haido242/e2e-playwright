@@ -43,6 +43,8 @@ docker run --rm \
   -v "${PROJECT_DIR}/artifacts:/artifacts" \
   -v "${PROJECT_DIR}/tests:/runner/tests" \
   -v "${PROJECT_DIR}/playwright.config.ts:/runner/playwright.config.ts" \
+  -v "${PROJECT_DIR}/.auth:/runner/.auth" \
+  -v "${PROJECT_DIR}/global-setup.ts:/runner/global-setup.ts" \
   "$IMAGE_NAME" --project=tpa-chrome
 
 TEST_EXIT_CODE=$?
