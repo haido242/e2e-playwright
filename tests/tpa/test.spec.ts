@@ -78,7 +78,16 @@ test('Thêm thư mục', async ({ page }) => {
   console.log('Drawer thêm thư mục đã xuất hiện.');
 
   // Điền tên thư mục và submit
-  const folderName = `E2E Test Folder ${new Date().toLocaleString()}`;
+  const now = new Date();
+  const timestamp = now.toLocaleString('vi-VN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  }).replace(/\//g, '-');
+  const folderName = `E2E Test Folder ${timestamp}`;
   await page.fill(`${drawerSelector} input[id="name"]`, folderName);
   await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
   await page.click(`${drawerSelector} button:has-text("Tạo")`);
