@@ -20,7 +20,7 @@ export default defineConfig({
   use: {
     trace: 'off', // Tắt trace để không ghi lại sensitive data
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'on',
     navigationTimeout: 30000, // Timeout cho navigation
   },
   projects: [

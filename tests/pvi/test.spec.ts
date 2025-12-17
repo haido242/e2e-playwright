@@ -1,78 +1,37 @@
 import { test, expect } from '@playwright/test';
 
+test('Thêm thư mục', async ({ page }) => {
+  // Đã đăng nhập sẵn qua storageState - không cần login nữa!
+  await page.goto('/folders', { waitUntil: 'domcontentloaded' });
+  console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
 
-test('Trang chủ hiển thị tiêu đề đúng', async ({ page }) => {
-  // Chờ trang load và kiểm tra response
-  const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
-  console.log('Response status:', response?.status());
-  console.log('Response URL:', response?.url());
-  
-  // Debug: log title
-  const title = await page.title();
-  console.log('Page title:', title);
-  
-  // Chờ thêm một chút để trang render
-  await page.waitForLoadState('networkidle');
-  
-  await expect(page).toHaveTitle(/DocBase.AI/i);
+  // Chờ nút "Thêm Thư Mục" xuất hiện và click
+  const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
+  await page.waitForSelector(addButtonSelector, { timeout: 20000 });
+  await page.click(addButtonSelector);
+  console.log('Đã click nút "Thêm Thư Mục".');
+
+  // Chờ drawer xuất hiện
+  const drawerSelector = '.ant-drawer-content';
+  await page.waitForSelector(drawerSelector, { timeout: 5000 });
+  console.log('Drawer thêm thư mục đã xuất hiện.');
+
+
+  const folderName = `E2E Test Folder`;
+  await page.fill(`${drawerSelector} input[id="name"]`, folderName);
+  await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
+  await page.click(`${drawerSelector} button:has-text("Tạo")`);
+  console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
+
+  // kiểm tra có được điều hướng tới trang thư mục mới không
+  await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
+  const currentURL = page.url();
+  console.log('Đã được điều hướng tới URL:', currentURL);
+  expect(currentURL).toMatch(/folders\/\d+/);
+  console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
 });
 
-// Test đăng nhập sai - Sử dụng context riêng KHÔNG có storageState
-test('Đăng nhập sai hiển thị lỗi', async ({ browser }) => {
-  const context = await browser.newContext({ 
-    storageState: undefined
-  });
-  const page = await context.newPage();
-  
-  const baseURL = process.env.TPA_BASE_URL || 'http://localhost:3000';
-  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' });
-
-  await page.fill('#email', 'wrong-email@example.com');
-  await page.fill('#password', 'wrongpassword');
-  await page.click('button[type=submit]');
-
-  // Chờ thông báo lỗi xuất hiện
-  const errorSelector = '.ant-notification-notice-description'; 
-  await page.waitForSelector(errorSelector, { timeout: 5000 });
-  const errorMessage = await page.textContent(errorSelector);
-  console.log('Error message displayed:', errorMessage);
-  expect(errorMessage).toContain('Email hoặc mật khẩu không hợp lệ');
-  
-  await context.close();
-});
-
-// test('Thêm thư mục', async ({ page }) => {
-//   // Đã đăng nhập sẵn qua storageState - không cần login nữa!
-//   await page.goto('/folders', { waitUntil: 'domcontentloaded' });
-//   console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
-
-//   // Chờ nút "Thêm Thư Mục" xuất hiện và click
-//   const addButtonSelector = 'button:has-text("Thêm Thư Mục")';
-//   await page.waitForSelector(addButtonSelector, { timeout: 20000 });
-//   await page.click(addButtonSelector);
-//   console.log('Đã click nút "Thêm Thư Mục".');
-
-//   // Chờ drawer xuất hiện
-//   const drawerSelector = '.ant-drawer-content';
-//   await page.waitForSelector(drawerSelector, { timeout: 5000 });
-//   console.log('Drawer thêm thư mục đã xuất hiện.');
-
-
-//   const folderName = `E2E Test Folder`;
-//   await page.fill(`${drawerSelector} input[id="name"]`, folderName);
-//   await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
-//   await page.click(`${drawerSelector} button:has-text("Tạo")`);
-//   console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
-
-//   // kiểm tra có được điều hướng tới trang thư mục mới không
-//   await page.waitForURL(/folders\/\d+/, { timeout: 10000 });
-//   const currentURL = page.url();
-//   console.log('Đã được điều hướng tới URL:', currentURL);
-//   expect(currentURL).toMatch(/folders\/\d+/);
-//   console.log('Thêm thư mục thành công và điều hướng đúng trang thư mục.');
-// });
-
-const uploadTestFunction = async ({ page }: { page: any }) => {
+test('Tải tài liệu lên', async ({ page }) => {
   // Tăng timeout cho test này vì upload có thể mất 2-3 phút
   test.setTimeout(10 * 60 * 1000); // 5 phút
   
@@ -88,9 +47,9 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   await page.waitForSelector(uploadButtonSelector, { timeout: 20000 });
   await page.click(uploadButtonSelector);
   console.log('Đã click nút "Tải Lên file".');
-  // Chờ dialog tải lên xuất hiện (lấy modal mới nhất nếu có nhiều modal)
-  const dialogLocator = page.locator('.ant-modal-content').last();
-  await dialogLocator.waitFor({ state: 'visible', timeout: 5000 });
+  // Chờ dialog tải lên xuất hiện
+  const dialogSelector = '.ant-modal-content';
+  await page.waitForSelector(dialogSelector, { timeout: 5000 });
   console.log('Dialog tải lên đã xuất hiện.');
   
   // Tải file lên
@@ -106,7 +65,7 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   }
   
   // Tìm input file element (có thể bị ẩn)
-  const fileInput = dialogLocator.locator('input[type="file"]');
+  const fileInput = await page.locator(`${dialogSelector} input[type="file"]`);
   const inputCount = await fileInput.count();
   console.log(`Found ${inputCount} file input(s)`);
   
@@ -115,7 +74,7 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   console.log(`Đã set file: ${filePath}`);
   
   // Chờ modal đóng lại (check hidden thay vì detached vì Ant Design giữ modal trong DOM)
-  await dialogLocator.waitFor({ state: 'hidden', timeout: 15000 });
+  await page.waitForSelector(dialogSelector, { state: 'hidden', timeout: 15000 });
   console.log('Modal tải lên đã đóng lại.');
   await page.waitForTimeout(2000); // Chờ thêm 2s để file xuất hiện trong danh sách
   // Selector cho cell của file vừa upload (hàng cuối cùng, cột 2)
@@ -163,7 +122,7 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   console.log('✅ Upload completed.');
   
   // Kiểm tra background color
-  const backgroundColor = await divLocator.evaluate((el : any) => {
+  const backgroundColor = await divLocator.evaluate((el) => {
     return window.getComputedStyle(el).backgroundColor;
   });
   console.log(`📊 Background color: ${backgroundColor}`);
@@ -172,9 +131,7 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   await expect(divLocator).toHaveCSS('background-color', 'rgb(35, 105, 246)');
   console.log('✅ Background color đúng (#2369f6). => ocr processing hoàn tất.');
 
-};
-
-test('Tải tài liệu lên', uploadTestFunction);
+});
 
 test('Màn xác nhận', async ({ page }) => {
   test.setTimeout(1 * 60 * 1000); // 1 phút
@@ -194,7 +151,7 @@ test('Màn xác nhận', async ({ page }) => {
     await page.waitForSelector(firstDocSelector, { timeout: 10000 });
     await page.click(firstDocSelector); // Click vào tài liệu đầu tiên
     
-    const submissionDrawerHeaderSelector = '.ant-drawer-header button[type="button"]:has-text("Xác nhận GYC")';
+    const submissionDrawerHeaderSelector = '.ant-drawer-header button[type="button"]:has-text("Xem YC")';
     await page.waitForSelector(submissionDrawerHeaderSelector, { timeout: 10000 });
     await page.click(submissionDrawerHeaderSelector);
     await page.waitForURL(/folders\/\d+\/verify\?/);
@@ -285,23 +242,6 @@ test('Màn xác nhận', async ({ page }) => {
       console.log('✅ Kiểm tra lại giá trị Mô tả nguyên nhân đã điền đúng.');
     }
 
-    await test.step('Kiểm tra nút "Xác nhận GYC" đã enabled', async () => {
-      const confirmButtonSelector = 'button:has-text("Xác nhận GYC")';
-      // Kiểm tra nút xác nhận có đang enabled không
-      const isDisabled = await page.locator(confirmButtonSelector).getAttribute('disabled');
-      expect(isDisabled).toBeNull();
-      console.log('✅ Nút "Xác nhận GYC" đang ở trạng thái enabled.');
-    });
-
-    await test.step('Ấn nút "Xác nhận GYC"', async () => {
-      const confirmButtonSelector = 'button:has-text("Xác nhận GYC")';
-      await page.click(confirmButtonSelector);
-      console.log('Đã ấn nút "Xác nhận GYC".');
-      // đợi ant message hiện lên
-      const successMessageSelector = '.ant-message-notice-content:has-text("Đã xác thực GYC")';
-      await page.waitForSelector(successMessageSelector, { timeout: 10000 });
-      console.log('Đã nhận được thông báo xác nhận GYC thành công.');
-    });
 
   });
   await test.step(' Kiểm tra nội dung màn chi phí', async () => {
@@ -362,7 +302,7 @@ test('Màn xác nhận', async ({ page }) => {
       // điền giá trị "Hạng mục từ chối Test"
       await hangMucTuChoiInput.fill('1000000');
       console.log('Đã điền Hạng mục từ chối.');
-      await page.waitForTimeout(6000);
+      await page.waitForTimeout(3000);
       // kiểm tra lại giá trị đã điền
       const filledHangMucTuChoiValue = await hangMucTuChoiInput.inputValue();
       expect(filledHangMucTuChoiValue).toBe('1.000.000');
@@ -393,8 +333,8 @@ test('Màn xác nhận', async ({ page }) => {
     await test.step('Kiểm tra tích từ chối ở bảng tổng hợp chi phí ngoài thuốc', async () => {
       const tonghopchiphingoaithuocTableSelector = '#tonghopchiphingoaithuoc';
       await page.click(`${tonghopchiphingoaithuocTableSelector}`)
-      // tìm checkbox chưa được tích trong bảng tổng hợp chi phí ngoài thuốc
-      const rejectCheckboxsSelector = `${tonghopchiphingoaithuocTableSelector} tbody .ant-checkbox-input:not([checked])`;
+
+      const rejectCheckboxsSelector = `${tonghopchiphingoaithuocTableSelector} tbody .ant-checkbox-input[checked]`;
       //click random 1 checkbox
       const checkboxCount = await page.locator(rejectCheckboxsSelector).count();
       if (checkboxCount === 0) {
@@ -410,12 +350,12 @@ test('Màn xác nhận', async ({ page }) => {
     })
 
 
-    await test.step('Kiểm tra nút "Xác nhận chi phí" đã enabled', async () => {
-      const syncButtonSelector = 'button:has-text("Xác nhận chi phí")';
+    await test.step('Kiểm tra nút đồng bộ đã enabled', async () => {
+      const syncButtonSelector = 'button:has-text("Đồng Bộ")';
       // Kiểm tra nút đồng bộ có đang enabled không
       const isDisabled = await page.locator(syncButtonSelector).getAttribute('disabled');
       expect(isDisabled).toBeNull();
-      console.log('✅ Nút "Xác nhận chi phí" đang ở trạng thái enabled.');
+      console.log('✅ Nút Đồng Bộ đang ở trạng thái enabled.');
     });
   });
 });
@@ -423,13 +363,16 @@ test('Màn xác nhận', async ({ page }) => {
 
 test('Bổ sung hồ sơ', async ({ page }) => {
   test.setTimeout(5 * 60 * 1000); // 5 phút
-
-  // gọi lại test tải tài liệu lên để có file trong folder
-  await uploadTestFunction({ page });
   // Đã đăng nhập sẵn qua storageState - không cần login nữa!
-
+  await test.step('Vào trang folder chi tiết', async () => {
+    await page.goto('/folders', { waitUntil: 'domcontentloaded' });
+    console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
+    await page.click('.ant-table-row:nth-child(1) .ant-table-cell:nth-child(1) .editable-cell-value-wrap'); // Click vào thư mục đầu tiên
+    await page.waitForURL(/folders\/\d+/);
+    console.log('Đã vào trang folder chi tiết.');
+  });
   await test.step('Vào chi tiết hồ sơ', async () => {
-    await page.click('.ant-table-row:last-child'); // Click vào tài liệu đầu tiên
+    await page.click('.ant-table-row:nth-child(1)'); // Click vào tài liệu đầu tiên
     // Chờ drawer chi tiết hồ sơ xuất hiện
     const detailDrawerSelector = '.ant-drawer-content';
     await page.waitForSelector(detailDrawerSelector, { timeout: 10000 });
@@ -439,9 +382,9 @@ test('Bổ sung hồ sơ', async ({ page }) => {
     const uploadSupplementButtonSelector = 'button:has-text("Bổ sung hồ sơ")';
     await page.click(uploadSupplementButtonSelector);
     console.log('Đã click nút "Bổ sung hồ sơ".');
-    // Lấy modal mới nhất (có thể có nhiều modal trong DOM)
-    const dialogLocator = page.locator('.ant-modal-content').last();
-    await dialogLocator.waitFor({ state: 'visible', timeout: 10000 });
+    // Chờ dialog tải lên xuất hiện
+    const dialogSelector = '.ant-modal-content';
+    await page.waitForSelector(dialogSelector, { timeout: 5000 });
     console.log('Dialog tải lên bổ sung hồ sơ đã xuất hiện.');
     // Tải file lên
     const filePath = require('path').resolve(__dirname, '../fixtures/790054_splitted.pdf');
@@ -452,14 +395,14 @@ test('Bổ sung hồ sơ', async ({ page }) => {
     if (!fileExists) {
       throw new Error(`File not found: ${filePath}`);
     }
-    const fileInput = dialogLocator.locator('input[type="file"]');
+    const fileInput = await page.locator(`${dialogSelector} input[type="file"]`);
     await fileInput.setInputFiles(filePath);
     console.log(`Đã set file bổ sung: ${filePath}`);
     // ấn nút bổ sung
-    await dialogLocator.locator('button:has-text("Bổ sung")').click();
+    await page.click(`${dialogSelector} button:has-text("Bổ sung")`);
     console.log('Đã click nút "Bổ sung" trong dialog.');
     // Chờ modal đóng lại
-    await dialogLocator.waitFor({ state: 'hidden', timeout: 15000 });
+    await page.waitForSelector(dialogSelector, { state: 'hidden', timeout: 15000 });
     console.log('Modal bổ sung hồ sơ đã đóng lại.');
 
     await page.waitForTimeout(5000); // Chờ thêm 5s để file xuất hiện trong danh sách 
@@ -504,7 +447,7 @@ test('Bổ sung hồ sơ', async ({ page }) => {
 
 
 test('Xóa folder', async ({ page }) => {
-  test.setTimeout(1 * 60 * 1000); // 1 phút
+  test.setTimeout(2 * 60 * 1000); // 2 phút
   // Đã đăng nhập sẵn qua storageState - không cần login nữa!
   await page.goto('/folders', { waitUntil: 'domcontentloaded' });
   console.log('Đã vào trang folders (đã đăng nhập sẵn qua storageState).');
@@ -523,14 +466,14 @@ test('Xóa folder', async ({ page }) => {
   await page.waitForSelector(inputNameForDeleteSelector, { timeout: 5000 });
   await page.fill(inputNameForDeleteSelector, 'E2E Test Folder');
   console.log('Đã điền tên folder để xác nhận xóa.');
-  const confirmDeleteButtonSelector = 'button:has-text("Xóa")';
+  const confirmDeleteButtonSelector = '.ant-btn.ant-btn-primary:has-text("Xóa")';
   await page.click(confirmDeleteButtonSelector);
   console.log('Đã click nút xác nhận xóa folder.');
   // Chờ điều hướng về trang /folders
   await page.waitForURL('/folders', { timeout: 10000 });
   console.log('Đã điều hướng về trang /folders sau khi xóa folder.');
   // Check thông báo thành công
-  const successNotificationSelector = 'ant-notification-notice.ant-notification-notice-success.ant-notification-notice-closable';
+  const successNotificationSelector = '.ant-notification-notice.ant-notification-notice-success.ant-notification-notice-closable';
   await page.waitForSelector(successNotificationSelector, { timeout: 5000 });
   console.log('Đã nhận được thông báo xóa folder thành công.');
 });

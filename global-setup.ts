@@ -41,7 +41,7 @@ async function globalSetup(config: FullConfig) {
     await page.fill('#password', testCredentials.pvi.password);
     await page.click('button[type=submit]');
 
-    await page.waitForURL(/dashboard|home/, { timeout: 10000 });
+    await page.waitForURL(/folders/, { timeout: 10000 });
     console.log('✅ PVI login successful');
 
     await context.storageState({ path: '.auth/pvi-user.json' });
