@@ -34,10 +34,12 @@ docker stop "$CONTAINER_NAME" 2>/dev/null || true
 docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # Bước 3: Chạy E2E tests
+# Bước 3: Chạy E2E tests
 echo -e "\n${BLUE}=========================================${NC}"
 echo -e "${BLUE}🧪 Running E2E Tests${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
+# Thêm biến --rm và đảm bảo bắt được exit code chính xác
 docker run --rm \
   --env-file .env \
   -v "${PROJECT_DIR}/artifacts:/artifacts" \
@@ -48,6 +50,14 @@ docker run --rm \
   "$IMAGE_NAME" --project=tpa-chrome
 
 TEST_EXIT_CODE=$?
+
+# QUAN TRỌNG: Kiểm tra file kết quả nếu cần chắc chắn hơn
+if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
+    FAILED_COUNT=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+    if [ "$FAILED_COUNT" -gt 0 ]; then
+        TEST_EXIT_CODE=1
+    fi
+fi
 
 # Bước 4: Kiểm tra kết quả test
 if [ $TEST_EXIT_CODE -eq 0 ]; then
