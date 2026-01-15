@@ -5,10 +5,12 @@ set -euo pipefail
 : "${BASE_URL:=http://localhost:3000}"
 : "${PVI_BASE_URL:=${BASE_URL}}"
 : "${TPA_BASE_URL:=${BASE_URL}}"
+: "${DIGINOTES_BASE_URL:=${BASE_URL}}"
 : "${PW_PROJECTS:=}"
 
 echo "==> PVI_BASE_URL=$PVI_BASE_URL"
 echo "==> TPA_BASE_URL=$TPA_BASE_URL"
+echo "==> DIGINOTES_BASE_URL=$DIGINOTES_BASE_URL"
 mkdir -p "$ARTIFACT_DIR"
 
 cd /runner
@@ -36,14 +38,17 @@ if [ -n "$SELECTED_PROJECT" ]; then
   elif [[ "$SELECTED_PROJECT" == *"tpa"* ]]; then
     export BASE_URL="$TPA_BASE_URL"
     echo "==> Đang kiểm tra TPA app tại $BASE_URL..."
+  elif [[ "$SELECTED_PROJECT" == *"diginotes"* ]]; then
+    export BASE_URL="$DIGINOTES_BASE_URL"
+    echo "==> Đang kiểm tra Diginotes app tại $BASE_URL..."
   else
     export BASE_URL="${TPA_BASE_URL:-${PVI_BASE_URL}}"
-    echo "==> Đang kiểm tra app tại $BASE_URL..."
+    echo "==> Đang kiểm tra app 1 tại $BASE_URL..."
   fi
 else
   # Không chọn project cụ thể, kiểm tra TPA mặc định
   export BASE_URL="${TPA_BASE_URL:-${PVI_BASE_URL}}"
-  echo "==> Đang kiểm tra app tại $BASE_URL..."
+  echo "==> Đang kiểm tra app 2 tại $BASE_URL..."
 fi
 
 /usr/local/bin/wait-for-app.sh

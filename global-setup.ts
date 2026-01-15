@@ -48,7 +48,28 @@ async function globalSetup(config: FullConfig) {
     await browser.close();
   }
 
+  if (process.env.DIGINOTES_TEST_EMAIL && process.env.DIGINOTES_TEST_PASSWORD) {
+    const browser = await chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    const baseURL = process.env.DIGINOTES_BASE_URL || 'http://localhost:3000';
+    console.log(`Logging in to Diginotes at ${baseURL}/login`);
+
+    await page.goto(`${baseURL}/login`);
+    await page.fill('#username', testCredentials.diginotes.email);
+    await page.fill('#password', testCredentials.diginotes.password);
+    await page.click('button[type=submit]');
+
+    await page.waitForURL(/folders/, { timeout: 10000 });
+    console.log('✅ Diginotes login successful');
+
+    await context.storageState({ path: '.auth/diginotes-user.json' });
+    await browser.close();
+  }
+
   console.log('✅ Authentication setup completed');
 }
+
 
 export default globalSetup;

@@ -44,5 +44,15 @@ export default defineConfig({
         },
         testDir: 'tests/tpa',
     },
+    {   
+        name: 'diginotes-chrome',
+        use: { 
+          baseURL: process.env.DIGINOTES_BASE_URL || 'http://localhost:3000', 
+          ...devices['Desktop Chrome'],
+          // Sử dụng storage state đã lưu
+          storageState: '.auth/diginotes-user.json',
+        },
+        testDir: 'tests/diginotes',
+    },
   ],
 });

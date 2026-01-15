@@ -6,6 +6,7 @@ async function globalTeardown(config: FullConfig) {
   // Xác định project nào đang chạy từ environment
   const isPVI = process.env.PVI_BASE_URL && process.env.PVI_BASE_URL !== 'http://localhost:3000';
   const isTPA = process.env.TPA_BASE_URL && process.env.TPA_BASE_URL !== 'http://localhost:3000';
+  const isDiginotes = process.env.DIGINOTES_BASE_URL && process.env.DIGINOTES_BASE_URL !== 'http://localhost:3000';
   
   const browser = await chromium.launch();
   
@@ -18,6 +19,10 @@ async function globalTeardown(config: FullConfig) {
     // Cleanup TPA nếu có chạy TPA tests
     if (isTPA) {
       await cleanupProject(browser, 'TPA', '.auth/tpa-user.json', process.env.TPA_BASE_URL!);
+    }
+
+    if (isDiginotes) {
+      await cleanupProject(browser, 'DIGINOTES', '.auth/diginotes-user.json', process.env.DIGINOTES_BASE_URL!);
     }
   } catch (error) {
     console.error('❌ Cleanup error:', error);

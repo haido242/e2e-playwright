@@ -3,7 +3,7 @@
 
 set -e
 
-URL="${BASE_URL:-http://localhost:3000}"
+URL="${BASE_URL:-http://localhost:5000}"
 MAX_ATTEMPTS=30
 SLEEP_TIME=2
 
