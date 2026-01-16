@@ -3,6 +3,8 @@
 #####################################################
 # E2E Test Runner with Auto Report Hosting
 # Chạy test và tự động host report trên port 9323
+# Usage: ./run-and-host.sh [PROJECT_NAME]
+# Example: ./run-and-host.sh tpa-chrome
 #####################################################
 
 # Cấu hình
@@ -10,6 +12,9 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPORT_PORT=9323
 CONTAINER_NAME="playwright-report-server"
 IMAGE_NAME="haido2402/e2e-playwright-e2e:latest"
+
+# Lấy project name từ tham số đầu tiên, mặc định là tpa-chrome
+PROJECT_NAME="${1:-tpa-chrome}"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -21,6 +26,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}🚀 E2E Test Runner & Report Host${NC}"
 echo -e "${BLUE}=========================================${NC}"
+echo -e "${YELLOW}📋 Project: $PROJECT_NAME${NC}"
 
 cd "$PROJECT_DIR"
 
@@ -47,7 +53,7 @@ docker run --rm \
   -v "${PROJECT_DIR}/playwright.config.ts:/runner/playwright.config.ts" \
   -v "${PROJECT_DIR}/.auth:/runner/.auth" \
   -v "${PROJECT_DIR}/global-setup.ts:/runner/global-setup.ts" \
-  "$IMAGE_NAME" --project=tpa-chrome
+  "$IMAGE_NAME" --project="$PROJECT_NAME"
 
 TEST_EXIT_CODE=$?
 
