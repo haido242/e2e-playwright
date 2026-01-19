@@ -30,115 +30,115 @@ echo -e "${YELLOW}📋 Project: $PROJECT_NAME${NC}"
 
 cd "$PROJECT_DIR"
 
-# # Bước 1: Pull latest image
-# echo -e "\n${YELLOW}📥 Pulling latest Docker image...${NC}"
-# docker pull "$IMAGE_NAME"
+# Bước 1: Pull latest image
+echo -e "\n${YELLOW}📥 Pulling latest Docker image...${NC}"
+docker pull "$IMAGE_NAME"
 
-# # Bước 2: Stop và remove report server cũ nếu đang chạy
-# echo -e "\n${YELLOW}🛑 Stopping old report server (if exists)...${NC}"
-# docker stop "$CONTAINER_NAME" 2>/dev/null || true
-# docker rm "$CONTAINER_NAME" 2>/dev/null || true
+# Bước 2: Stop và remove report server cũ nếu đang chạy
+echo -e "\n${YELLOW}🛑 Stopping old report server (if exists)...${NC}"
+docker stop "$CONTAINER_NAME" 2>/dev/null || true
+docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
-# # Bước 3: Chạy E2E tests
-# # Bước 3: Chạy E2E tests
-# echo -e "\n${BLUE}=========================================${NC}"
-# echo -e "${BLUE}🧪 Running E2E Tests${NC}"
-# echo -e "${BLUE}=========================================${NC}"
+# Bước 3: Chạy E2E tests
+# Bước 3: Chạy E2E tests
+echo -e "\n${BLUE}=========================================${NC}"
+echo -e "${BLUE}🧪 Running E2E Tests${NC}"
+echo -e "${BLUE}=========================================${NC}"
 
-# # Thêm biến --rm và đảm bảo bắt được exit code chính xác
-# docker run --rm \
-#   --env-file .env \
-#   -v "${PROJECT_DIR}/artifacts:/artifacts" \
-#   -v "${PROJECT_DIR}/tests:/runner/tests" \
-#   -v "${PROJECT_DIR}/playwright.config.ts:/runner/playwright.config.ts" \
-#   -v "${PROJECT_DIR}/.auth:/runner/.auth" \
-#   -v "${PROJECT_DIR}/global-setup.ts:/runner/global-setup.ts" \
-#   "$IMAGE_NAME" --project="$PROJECT_NAME"
+# Thêm biến --rm và đảm bảo bắt được exit code chính xác
+docker run --rm \
+  --env-file .env \
+  -v "${PROJECT_DIR}/artifacts:/artifacts" \
+  -v "${PROJECT_DIR}/tests:/runner/tests" \
+  -v "${PROJECT_DIR}/playwright.config.ts:/runner/playwright.config.ts" \
+  -v "${PROJECT_DIR}/.auth:/runner/.auth" \
+  -v "${PROJECT_DIR}/global-setup.ts:/runner/global-setup.ts" \
+  "$IMAGE_NAME" --project="$PROJECT_NAME"
 
-# TEST_EXIT_CODE=$?
+TEST_EXIT_CODE=$?
 
-# # QUAN TRỌNG: Kiểm tra file kết quả nếu cần chắc chắn hơn
-# if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
-#     FAILED_COUNT=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
-#     if [ "$FAILED_COUNT" -gt 0 ]; then
-#         TEST_EXIT_CODE=1
-#     fi
-# fi
+# QUAN TRỌNG: Kiểm tra file kết quả nếu cần chắc chắn hơn
+if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
+    FAILED_COUNT=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+    if [ "$FAILED_COUNT" -gt 0 ]; then
+        TEST_EXIT_CODE=1
+    fi
+fi
 
-# # Bước 4: Kiểm tra kết quả test
-# if [ $TEST_EXIT_CODE -eq 0 ]; then
-#     echo -e "\n${GREEN}✅ Tests PASSED${NC}"
-# else
-#     echo -e "\n${RED}❌ Tests FAILED (Exit code: $TEST_EXIT_CODE)${NC}"
-# fi
+# Bước 4: Kiểm tra kết quả test
+if [ $TEST_EXIT_CODE -eq 0 ]; then
+    echo -e "\n${GREEN}✅ Tests PASSED${NC}"
+else
+    echo -e "\n${RED}❌ Tests FAILED (Exit code: $TEST_EXIT_CODE)${NC}"
+fi
 
-# # Bước 5: Kiểm tra report có tồn tại không
-# REPORT_DIR="${PROJECT_DIR}/artifacts/playwright-report"
-# if [ ! -d "$REPORT_DIR" ] || [ ! -f "$REPORT_DIR/index.html" ]; then
-#     echo -e "${RED}❌ Report not found at $REPORT_DIR${NC}"
-#     exit 1
-# fi
+# Bước 5: Kiểm tra report có tồn tại không
+REPORT_DIR="${PROJECT_DIR}/artifacts/playwright-report"
+if [ ! -d "$REPORT_DIR" ] || [ ! -f "$REPORT_DIR/index.html" ]; then
+    echo -e "${RED}❌ Report not found at $REPORT_DIR${NC}"
+    exit 1
+fi
 
-# # Bước 6: Host report với Nginx container
-# echo -e "\n${BLUE}=========================================${NC}"
-# echo -e "${BLUE}🌐 Starting Report Server${NC}"
-# echo -e "${BLUE}=========================================${NC}"
+# Bước 6: Host report với Nginx container
+echo -e "\n${BLUE}=========================================${NC}"
+echo -e "${BLUE}🌐 Starting Report Server${NC}"
+echo -e "${BLUE}=========================================${NC}"
 
-# docker run -d \
-#   --name "$CONTAINER_NAME" \
-#   -p "$REPORT_PORT:80" \
-#   -v "${REPORT_DIR}:/usr/share/nginx/html:ro" \
-#   --restart unless-stopped \
-#   nginx:alpine
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  -p "$REPORT_PORT:80" \
+  -v "${REPORT_DIR}:/usr/share/nginx/html:ro" \
+  --restart unless-stopped \
+  nginx:alpine
 
-# # Đợi server start
-# sleep 2
+# Đợi server start
+sleep 2
 
-# # Kiểm tra container đã chạy chưa
-# if docker ps | grep -q "$CONTAINER_NAME"; then
-#     echo -e "${GREEN}✅ Report server started successfully${NC}"
-# else
-#     echo -e "${RED}❌ Failed to start report server${NC}"
-#     exit 1
-# fi
+# Kiểm tra container đã chạy chưa
+if docker ps | grep -q "$CONTAINER_NAME"; then
+    echo -e "${GREEN}✅ Report server started successfully${NC}"
+else
+    echo -e "${RED}❌ Failed to start report server${NC}"
+    exit 1
+fi
 
-# # Bước 7: Parse test results (optional)
-# if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
-#     TOTAL=$(grep -o '<testcase' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
-#     FAILED=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
-#     PASSED=$((TOTAL - FAILED))
+# Bước 7: Parse test results (optional)
+if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
+    TOTAL=$(grep -o '<testcase' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+    FAILED=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+    PASSED=$((TOTAL - FAILED))
     
-#     echo -e "\n${BLUE}=========================================${NC}"
-#     echo -e "${BLUE}📊 Test Results Summary${NC}"
-#     echo -e "${BLUE}=========================================${NC}"
-#     echo -e "  ${GREEN}✅ Passed: $PASSED${NC}"
-#     echo -e "  ${RED}❌ Failed: $FAILED${NC}"
-#     echo -e "  📝 Total:  $TOTAL"
-# fi
+    echo -e "\n${BLUE}=========================================${NC}"
+    echo -e "${BLUE}📊 Test Results Summary${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "  ${GREEN}✅ Passed: $PASSED${NC}"
+    echo -e "  ${RED}❌ Failed: $FAILED${NC}"
+    echo -e "  📝 Total:  $TOTAL"
+fi
 
-# # Bước 8: Hiển thị thông tin truy cập
-# SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-# if [ -z "$SERVER_IP" ]; then
-#     SERVER_IP=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
-# fi
-# if [ -z "$SERVER_IP" ]; then
-#     SERVER_IP="localhost"
-# fi
+# Bước 8: Hiển thị thông tin truy cập
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
+fi
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="localhost"
+fi
 
-# echo -e "\n${BLUE}=========================================${NC}"
-# echo -e "${GREEN}✅ Report is now available at:${NC}"
-# echo -e "${BLUE}=========================================${NC}"
-# echo -e "  🌐 ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}${NC}"
-# echo -e "${BLUE}=========================================${NC}"
+echo -e "\n${BLUE}=========================================${NC}"
+echo -e "${GREEN}✅ Report is now available at:${NC}"
+echo -e "${BLUE}=========================================${NC}"
+echo -e "  🌐 ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}${NC}"
+echo -e "${BLUE}=========================================${NC}"
 
-# # Bước 9: Hiển thị commands để quản lý
-# echo -e "\n${BLUE}💡 Useful commands:${NC}"
-# echo -e "  Stop server:    ${YELLOW}docker stop $CONTAINER_NAME${NC}"
-# echo -e "  Start server:   ${YELLOW}docker start $CONTAINER_NAME${NC}"
-# echo -e "  Restart server: ${YELLOW}docker restart $CONTAINER_NAME${NC}"
-# echo -e "  View logs:      ${YELLOW}docker logs -f $CONTAINER_NAME${NC}"
-# echo -e "  Remove server:  ${YELLOW}docker rm -f $CONTAINER_NAME${NC}"
+# Bước 9: Hiển thị commands để quản lý
+echo -e "\n${BLUE}💡 Useful commands:${NC}"
+echo -e "  Stop server:    ${YELLOW}docker stop $CONTAINER_NAME${NC}"
+echo -e "  Start server:   ${YELLOW}docker start $CONTAINER_NAME${NC}"
+echo -e "  Restart server: ${YELLOW}docker restart $CONTAINER_NAME${NC}"
+echo -e "  View logs:      ${YELLOW}docker logs -f $CONTAINER_NAME${NC}"
+echo -e "  Remove server:  ${YELLOW}docker rm -f $CONTAINER_NAME${NC}"
 
-# echo -e "\n${GREEN}🎉 Done!${NC}\n"
+echo -e "\n${GREEN}🎉 Done!${NC}\n"
 
-exit 0
+exit $TEST_EXIT_CODE
