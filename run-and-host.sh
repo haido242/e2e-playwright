@@ -141,4 +141,4 @@ echo -e "  Remove server:  ${YELLOW}docker rm -f $CONTAINER_NAME${NC}"
 
 echo -e "\n${GREEN}🎉 Done!${NC}\n"
 
-exit $TEST_EXIT_CODE
+exit 1
