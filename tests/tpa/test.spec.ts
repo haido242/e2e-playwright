@@ -523,7 +523,8 @@ test('Xóa folder', async ({ page }) => {
   await page.waitForSelector(inputNameForDeleteSelector, { timeout: 5000 });
   await page.fill(inputNameForDeleteSelector, 'E2E Test Folder');
   console.log('Đã điền tên folder để xác nhận xóa.');
-  const confirmDeleteButtonSelector = 'button:has-text("Xóa")';
+  await page.waitForTimeout(1000); // đợi 1s cho button enabled
+  const confirmDeleteButtonSelector = 'button.ant-btn.ant-btn-primary:has-text("Xóa")';
   await page.click(confirmDeleteButtonSelector);
   console.log('Đã click nút xác nhận xóa folder.');
   // Chờ điều hướng về trang /folders
