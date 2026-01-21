@@ -14,11 +14,14 @@ export default defineConfig({
       outputFolder: 'playwright-report', 
       open: 'never',
       // Không attach trace vào HTML report để tránh lộ credentials
+      //thêm trace để test
+      trace: 'on',
       attachments: false 
     }],
   ],
   use: {
-    trace: 'off', // Tắt trace để không ghi lại sensitive data
+    headless: true,
+    trace: 'on', // Tắt trace để không ghi lại sensitive data
     screenshot: 'only-on-failure',
     video: 'on',
     navigationTimeout: 30000, // Timeout cho navigation
