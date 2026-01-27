@@ -226,8 +226,8 @@ test('Màn xác nhận', async ({ page }) => {
       const title = await titleDiv.textContent();
       titleList.push(title?.trim());
     }
-    expect(titleList).toEqual(expectedTitles);
-    console.log('✅ Title fields match expected titles.');
+    console.log('✅ Title fields contain all expected titles.', titleList, expectedTitles);
+    expect(titleList).toMatchObject(expectedTitles);
     
     // Assertion: Kiểm tra có đủ fields không
     expect(count).toBeGreaterThan(0);
@@ -531,7 +531,7 @@ test('Xóa folder', async ({ page }) => {
   await page.waitForURL('/folders', { timeout: 10000 });
   console.log('Đã điều hướng về trang /folders sau khi xóa folder.');
   // Check thông báo thành công
-  const successNotificationSelector = 'ant-notification-notice.ant-notification-notice-success.ant-notification-notice-closable';
+  const successNotificationSelector = '.ant-notification-notice.ant-notification-notice-success.ant-notification-notice-closable';
   await page.waitForSelector(successNotificationSelector, { timeout: 5000 });
   console.log('Đã nhận được thông báo xóa folder thành công.');
 });
