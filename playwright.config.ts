@@ -53,6 +53,8 @@ export default defineConfig({
           storageState: '.auth/diginotes-user.json',
         },
         testDir: 'tests/diginotes',
+        fullyParallel: false,
+        workers: 1
     },
   ],
 });
