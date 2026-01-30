@@ -16,12 +16,16 @@ export const testCredentials = {
     email: process.env.DIGINOTES_TEST_EMAIL || '',
     password: process.env.DIGINOTES_TEST_PASSWORD || '',
   },
+  docbase: {
+    email: process.env.DOCBASE_TEST_EMAIL || '',
+    password: process.env.DOCBASE_TEST_PASSWORD || '',
+  },
 };
 
 /**
  * Validate credentials có được set chưa
  */
-export function validateCredentials(project: 'tpa' | 'pvi' | 'diginotes') {
+export function validateCredentials(project: 'tpa' | 'pvi' | 'diginotes' | 'docbase') {
   const creds = testCredentials[project];
   
   if (!creds.email || !creds.password) {
