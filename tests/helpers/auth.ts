@@ -6,14 +6,14 @@ import { Page } from '@playwright/test';
  */
 export async function login(page: Page, email: string, password: string) {
   // Chờ form xuất hiện
-  await page.waitForSelector('#email');
+  await page.waitForSelector('#username');
   await page.waitForSelector('#password');
   
   // Điền form sử dụng JavaScript trong browser context
   // Cách này không bị Playwright trace ghi lại giá trị
   await page.evaluate(
     ({ emailValue, passwordValue }) => {
-      const emailInput = document.querySelector<HTMLInputElement>('#email');
+      const emailInput = document.querySelector<HTMLInputElement>('#username');
       const passwordInput = document.querySelector<HTMLInputElement>('#password');
       
       if (emailInput) {
@@ -69,19 +69,19 @@ export async function loginWithMask(page: Page, email: string, password: string)
   // Ẩn input fields trước khi fill để không bị capture trong screenshot
   await page.addStyleTag({
     content: `
-      #email, #password {
+      #username, #password {
         -webkit-text-security: disc !important;
       }
     `
   });
   
-  await page.fill('#email', email);
+  await page.fill('#username', email);
   await page.fill('#password', password);
   
   // Remove style sau khi fill xong
   await page.addStyleTag({
     content: `
-      #email, #password {
+      #username, #password {
         -webkit-text-security: none !important;
       }
     `
@@ -94,7 +94,7 @@ export async function loginWithMask(page: Page, email: string, password: string)
  * Lưu ý: Giá trị vẫn sẽ xuất hiện trong trace/report
  */
 export async function loginSimple(page: Page, email: string, password: string) {
-  await page.fill('#email', email);
+  await page.fill('#username', email);
   await page.fill('#password', password);
 }
 
@@ -104,7 +104,7 @@ export async function loginSimple(page: Page, email: string, password: string) {
  */
 export async function loginHidden(page: Page, email: string, password: string) {
   // Cách này sẽ không log giá trị vào trace
-  const emailInput = page.locator('#email');
+  const emailInput = page.locator('#username');
   const passwordInput = page.locator('#password');
   
   // Clear và điền không log value

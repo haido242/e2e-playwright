@@ -47,5 +47,29 @@ export default defineConfig({
         },
         testDir: 'tests/tpa',
     },
+    {   
+        name: 'diginotes-chrome',
+        use: { 
+          baseURL: process.env.DIGINOTES_BASE_URL || 'http://localhost:3000', 
+          ...devices['Desktop Chrome'],
+          // Sử dụng storage state đã lưu
+          storageState: '.auth/diginotes-user.json',
+        },
+        testDir: 'tests/diginotes',
+        fullyParallel: false,
+        workers: 1
+    },
+    {   
+        name: 'docbase-chrome',
+        use: { 
+          baseURL: process.env.DOCBASE_BASE_URL || 'http://localhost:3000', 
+          ...devices['Desktop Chrome'],
+          // Sử dụng storage state đã lưu
+          storageState: '.auth/docbase-user.json',
+        },
+        testDir: 'tests/docbase',
+        fullyParallel: false,
+        workers: 1
+    },
   ],
 });
