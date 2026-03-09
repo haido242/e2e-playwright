@@ -231,11 +231,12 @@ test('Màn xác nhận', async ({ page }) => {
     
     // Assertion: Kiểm tra có đủ fields không
     // expect(count).toBeGreaterThan(0);
-
+    await page.waitForTimeout(5000); // chờ thêm 5s để đảm bảo tất cả fields đã render
     // điền họ và tên NYCTT
     const fullNameField = page.locator('div[name^="datapoint-"]').filter({
       has: page.locator('div:has-text("Họ và tên NYCTT")')
     }).first();
+    
     const inputLocator = fullNameField.locator('input[type="text"]');
     await inputLocator.fill('Nguyễn Văn A');
     console.log('Đã điền họ và tên NYCTT.');
