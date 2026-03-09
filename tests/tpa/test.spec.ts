@@ -246,14 +246,14 @@ test('Màn xác nhận', async ({ page }) => {
     await page.screenshot({ path: 'artifacts/test-results/man-xac-nhan-ho-va-ten-nyctt.png', fullPage: true });
 
 
-  // 1. Tìm thẻ cha chứa trường "Chuẩn hóa" (viết gọn lại bằng hasText)
-  const chuanhoaField = page.locator('div[name^="datapoint-"]', { hasText: 'Chuẩn hóa' }).first();
+  // 1. Dùng lại chính xác locator gốc của bạn (chắc chắn tìm đúng block)
+  const chuanhoaField = page.locator('div[name^="datapoint-"]').filter({
+    has: page.locator('div:has-text("Chuẩn hóa")')
+  }).nth(0);
 
-  // 2. Lấy giá trị hiện tại (tìm thẻ span chứa text hiển thị của Ant Design)
+  // 2. Lấy giá trị hiện tại từ thẻ hiển thị của Ant Design
   const selectedItem = chuanhoaField.locator('.ant-select-selection-item');
   let chuanhoaValue = '';
-
-  // Kiểm tra xem thẻ hiển thị giá trị có tồn tại không
   if (await selectedItem.count() > 0) {
     chuanhoaValue = await selectedItem.innerText();
   }
@@ -262,28 +262,30 @@ test('Màn xác nhận', async ({ page }) => {
   if (chuanhoaValue?.trim() === '') {
     console.log('Đang điền giá trị Chuẩn hóa...');
     
-    // 3. Click vào ô Select để mở dropdown list
-    await chuanhoaField.locator('.ant-select-selector').click();
-
-    // 4. (Tuỳ chọn) Gõ vào ô search để lọc kết quả, giúp tìm chính xác hơn
     const searchInput = chuanhoaField.locator('#benhvien');
+    
+    // 3. Click thẳng vào thẻ input #benhvien để mở dropdown. 
+    // Thêm { force: true } đề phòng CSS của Ant Design che khuất phần click.
+    await searchInput.click({ force: true }); 
+
+    // 4. Gõ từ khóa tìm kiếm
     await searchInput.fill('Chuẩn hóa Test'); 
 
-    // 5. Click vào option xổ ra. 
-    // Lưu ý: Ant Design thường render dropdown ở cuối thẻ <body>, không nằm trong chuanhoaField.
-    // Cần đảm bảo 'Chuẩn hóa Test' là một option thực sự tồn tại trong hệ thống của bạn.
-    const dropdownOption = page.locator('.ant-select-item-option', { hasText: 'Chuẩn hóa Test' });
+    // 5. Chờ dropdown (bảng chứa các option) render ra DOM
+    await page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
+
+    // 6. Click vào option mong muốn (lưu ý: thẻ option này nằm ở page, không nằm trong chuanhoaField)
+    const dropdownOption = page.locator('.ant-select-item-option').filter({ hasText: 'Chuẩn hóa Test' }).first();
     await dropdownOption.click();
 
-    // Đợi một chút để UI cập nhật
+    // Đợi một chút cho Form State cập nhật
     await page.waitForTimeout(1000); 
 
-    // 6. Kiểm tra lại giá trị đã điền
-    const filledChuanhoaValue = await chuanhoaField.locator('.ant-select-selection-item').innerText();
+    // 7. Kiểm tra lại giá trị đã điền
+    const filledChuanhoaValue = await selectedItem.innerText();
     expect(filledChuanhoaValue).toBe('Chuẩn hóa Test');
     console.log('✅ Kiểm tra lại giá trị Chuẩn hóa đã điền đúng.');
   }
-
 
     const moTaNguyenNhanField = page.locator('div[name^="datapoint-"]').filter({
       has: page.locator('div:has-text("Mô tả nguyên nhân")')
