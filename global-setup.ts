@@ -1,24 +1,70 @@
 import { chromium, FullConfig } from '@playwright/test';
 import { testCredentials } from './tests/helpers/credentials';
 
+function getProjectsFromCliArgs(): string[] {
+  const args = process.argv.slice(2);
+  const projects: string[] = [];
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg.startsWith('--project=')) {
+      projects.push(arg.replace('--project=', ''));
+      continue;
+    }
+
+    if (arg === '--project' && args[i + 1]) {
+      projects.push(args[i + 1]);
+      i++;
+    }
+  }
+
+  return projects
+    .flatMap((p: string) => p.split(','))
+    .map((p: string) => p.toLowerCase().trim())
+    .filter(Boolean);
+}
+
 async function globalSetup(config: FullConfig) {
   console.log('🔐 Setting up authentication...');
 
-  // Kiểm tra env variable TEST_PROJECTS để xác định project nào cần login
-  // Ví dụ: TEST_PROJECTS=diginotes hoặc TEST_PROJECTS=tpa,pvi
-  const testProjects = process.env.TEST_PROJECTS?.toLowerCase().split(',').map(p => p.trim()) || [];
-  
-  if (testProjects.length > 0) {
-    console.log(`Login only for projects: ${testProjects.join(', ')}`);
+  const testProjectsFromCli = getProjectsFromCliArgs();
+
+  // Ưu tiên project thực tế Playwright đang chạy (ví dụ --project=tpa-chrome)
+  const selectedProjectsFromConfig = (config.projects || [])
+    .map(project => project.name.toLowerCase().trim())
+    .filter(Boolean);
+
+  // Có thể override bằng TEST_PROJECTS nếu cần chạy thủ công nhiều project
+  const testProjectsFromEnv = process.env.TEST_PROJECTS
+    ?.toLowerCase()
+    .split(',')
+    .map((p: string) => p.trim())
+    .filter(Boolean) || [];
+
+  const activeProjects: string[] =
+    testProjectsFromCli.length > 0
+      ? testProjectsFromCli
+      : testProjectsFromEnv.length > 0
+        ? testProjectsFromEnv
+        : selectedProjectsFromConfig;
+
+  if (activeProjects.length > 0) {
+    const source = testProjectsFromCli.length > 0
+      ? 'CLI --project'
+      : testProjectsFromEnv.length > 0
+        ? 'TEST_PROJECTS'
+        : 'Playwright config';
+    console.log(`Login only for projects (${source}): ${activeProjects.join(', ')}`);
   } else {
-    console.log('TEST_PROJECTS not set - will login for all configured projects');
+    console.log('No active project detected - will login for all configured systems');
   }
 
-  // Xác định projects nào cần login
-  const needsTPA = testProjects.length === 0 || testProjects.some(p => p.includes('tpa'));
-  const needsPVI = testProjects.length === 0 || testProjects.some(p => p.includes('pvi'));
-  const needsDiginotes = testProjects.length === 0 || testProjects.some(p => p.includes('diginotes'));
-  const needsDocbase = testProjects.length === 0 || testProjects.some(p => p.includes('docbase'));
+  // Xác định systems nào cần login
+  const needsTPA = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('tpa'));
+  const needsPVI = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('pvi'));
+  const needsDiginotes = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('diginotes'));
+  const needsDocbase = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('docbase'));
 
   // TPA Login (chỉ khi project TPA được chạy)
   if (needsTPA && process.env.TPA_TEST_EMAIL && process.env.TPA_TEST_PASSWORD) {
