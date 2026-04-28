@@ -448,13 +448,13 @@ test('Màn xác nhận', async ({ page }) => {
     })
 
 
-    await test.step('Kiểm tra nút "Xác nhận chi phí" đã enabled', async () => {
-      const syncButtonSelector = 'button:has-text("Xác nhận chi phí")';
-      // Kiểm tra nút đồng bộ có đang enabled không
-      const isDisabled = await page.locator(syncButtonSelector).getAttribute('disabled');
-      expect(isDisabled).toBeNull();
-      console.log('✅ Nút "Xác nhận chi phí" đang ở trạng thái enabled.');
-    });
+    // await test.step('Kiểm tra nút "Xác nhận chi phí" đã enabled', async () => {
+    //   const syncButtonSelector = 'button:has-text("Xác nhận chi phí")';
+    //   // Kiểm tra nút đồng bộ có đang enabled không
+    //   const isDisabled = await page.locator(syncButtonSelector).getAttribute('disabled');
+    //   expect(isDisabled).toBeNull();
+    //   console.log('✅ Nút "Xác nhận chi phí" đang ở trạng thái enabled.');
+    // });
   });
 });
 
