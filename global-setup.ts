@@ -65,6 +65,8 @@ async function globalSetup(config: FullConfig) {
   const needsPVI = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('pvi'));
   const needsDiginotes = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('diginotes'));
   const needsDocbase = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('docbase'));
+  const needsBic = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('bic'));
+  const needsVbi = activeProjects.length === 0 || activeProjects.some((p: string) => p.includes('vbi'));
 
   // TPA Login (chỉ khi project TPA được chạy)
   if (needsTPA && process.env.TPA_TEST_EMAIL && process.env.TPA_TEST_PASSWORD) {
@@ -149,6 +151,48 @@ async function globalSetup(config: FullConfig) {
     console.log('✅ Docbase login successful');
 
     await context.storageState({ path: '.auth/docbase-user.json' });
+    await browser.close();
+  }
+
+  // BIC Login (chỉ khi project BIC được chạy)
+  if (needsBic && process.env.BIC_TEST_EMAIL && process.env.BIC_TEST_PASSWORD) {
+    const browser = await chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    const baseURL = process.env.BIC_BASE_URL || 'http://localhost:3000';
+    console.log(`Logging in to BIC at ${baseURL}/login`);
+
+    await page.goto(`${baseURL}/login`);
+    await page.fill('#email', testCredentials.bic.email);
+    await page.fill('#password', testCredentials.bic.password);
+    await page.click('button[type=submit]');
+
+    await page.waitForURL(/folders/, { timeout: 10000 });
+    console.log('✅ BIC login successful');
+
+    await context.storageState({ path: '.auth/bic-user.json' });
+    await browser.close();
+  }
+
+  // VBI Login (chỉ khi project VBI được chạy)
+  if (needsVbi && process.env.VBI_TEST_EMAIL && process.env.VBI_TEST_PASSWORD) {
+    const browser = await chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    const baseURL = process.env.VBI_BASE_URL || 'http://localhost:3000';
+    console.log(`Logging in to VBI at ${baseURL}/login`);
+
+    await page.goto(`${baseURL}/login`);
+    await page.fill('#email', testCredentials.vbi.email);
+    await page.fill('#password', testCredentials.vbi.password);
+    await page.click('button[type=submit]');
+
+    await page.waitForURL(/folders/, { timeout: 10000 });
+    console.log('✅ VBI login successful');
+
+    await context.storageState({ path: '.auth/vbi-user.json' });
     await browser.close();
   }
 

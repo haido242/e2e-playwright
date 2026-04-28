@@ -20,12 +20,20 @@ export const testCredentials = {
     email: process.env.DOCBASE_TEST_EMAIL || '',
     password: process.env.DOCBASE_TEST_PASSWORD || '',
   },
+  bic: {
+    email: process.env.BIC_TEST_EMAIL || '',
+    password: process.env.BIC_TEST_PASSWORD || '',
+  },
+  vbi: {
+    email: process.env.VBI_TEST_EMAIL || '',
+    password: process.env.VBI_TEST_PASSWORD || '',
+  },
 };
 
 /**
  * Validate credentials có được set chưa
  */
-export function validateCredentials(project: 'tpa' | 'pvi' | 'diginotes' | 'docbase') {
+export function validateCredentials(project: 'tpa' | 'pvi' | 'diginotes' | 'docbase' | 'bic' | 'vbi') {
   const creds = testCredentials[project];
   
   if (!creds.email || !creds.password) {

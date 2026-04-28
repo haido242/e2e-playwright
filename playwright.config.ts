@@ -71,5 +71,23 @@ export default defineConfig({
         fullyParallel: false,
         workers: 1
     },
+    {
+        name: 'bic-chrome',
+        use: {
+          baseURL: process.env.BIC_BASE_URL || 'http://localhost:3000',
+          ...devices['Desktop Chrome'],
+          storageState: '.auth/bic-user.json',
+        },
+        testDir: 'tests/bic',
+    },
+    {
+        name: 'vbi-chrome',
+        use: {
+          baseURL: process.env.VBI_BASE_URL || 'http://localhost:3000',
+          ...devices['Desktop Chrome'],
+          storageState: '.auth/vbi-user.json',
+        },
+        testDir: 'tests/vbi',
+    },
   ],
 });
