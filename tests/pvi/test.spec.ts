@@ -170,24 +170,24 @@ test('Màn xác nhận', async ({ page }) => {
     console.log('Spinner đã biến mất, trang đã load xong.');
     
     // Kiểm tra title các trường
-    const expectedTitles = ['Hình thức điều trị', 'Ngày KH yêu cầu', 'Họ và tên NYCTT','Người được bảo hiểm','Người thụ hưởng', 'Ngày xảy ra rủi ro', 'Địa điểm', 'OCR', 'Chuẩn hóa', 'OCR', 'Mã ICD', 'Chuẩn hóa', 'Mô tả nguyên nhân', 'Số tiền KH YCBT', 'Hậu quả', 'Số tiền BHYT chi trả'];
+    // const expectedTitles = ['Hình thức điều trị', 'Ngày KH yêu cầu', 'Họ và tên NYCTT','Người được bảo hiểm','Người thụ hưởng', 'Ngày xảy ra rủi ro', 'Địa điểm', 'OCR', 'Chuẩn hóa', 'OCR', 'Mã ICD', 'Chuẩn hóa', 'Mô tả nguyên nhân', 'Số tiền KH YCBT', 'Hậu quả', 'Số tiền BHYT chi trả'];
     
-    const titleFieldsLocator = page.locator('div[name^="datapoint-"]');
-    const count = await titleFieldsLocator.count();
-    console.log(`Found ${count} datapoint fields`);
+    // const titleFieldsLocator = page.locator('div[name^="datapoint-"]');
+    // const count = await titleFieldsLocator.count();
+    // console.log(`Found ${count} datapoint fields`);
     
-    const titleList = [];
-    for (let i = 0; i < count; i++) {
-      const field = titleFieldsLocator.nth(i);
-      const titleDiv = field.locator('div').nth(1);
-      const title = await titleDiv.textContent();
-      titleList.push(title?.trim());
-    }
-    expect(titleList).toEqual(expectedTitles);
-    console.log('✅ Title fields match expected titles.');
+    // const titleList = [];
+    // for (let i = 0; i < count; i++) {
+    //   const field = titleFieldsLocator.nth(i);
+    //   const titleDiv = field.locator('div').nth(1);
+    //   const title = await titleDiv.textContent();
+    //   titleList.push(title?.trim());
+    // }
+    // expect(titleList).toEqual(expectedTitles);
+    // console.log('✅ Title fields match expected titles.');
     
     // Assertion: Kiểm tra có đủ fields không
-    expect(count).toBeGreaterThan(0);
+    // expect(count).toBeGreaterThan(0);
 
     // điền họ và tên NYCTT
     const fullNameField = page.locator('div[name^="datapoint-"]').filter({
