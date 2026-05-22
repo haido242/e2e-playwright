@@ -250,11 +250,11 @@ test('Màn xác nhận', async ({ page }) => {
     await page.click(costTabSelector);
     await page.waitForTimeout(3000); // chờ trang chi phí load
     console.log('Đã vào tab Chi Phí.');
-    const tonghopchiphichungTableSelector = '.ant-table-wrapper.table__tongHopChiPhiChung';
+    const tonghopchiphichungTableSelector = '.table__tongHopChiPhiChung';
     const scrollContainerSelector = '#scroll-container:nth-child(2)';
 
     await test.step('Thêm Quyền lợi bảo hiểm', async () => {
-      const addBenefitSelector = `${tonghopchiphichungTableSelector} thead.ant-table-thead .ant-table-cell:nth-child(2) .ant-select-selector .ant-select-selection-search input`;
+      const addBenefitSelector = `${tonghopchiphichungTableSelector} .ant-select.cell__select > .ant-select-selector:first-child .ant-select-selection-search input`;
       await page.click(addBenefitSelector);
       const optionSelector = `.rc-virtual-list-holder-inner .ant-select-item-option:first-child`;
       await page.click(optionSelector);
@@ -268,8 +268,8 @@ test('Màn xác nhận', async ({ page }) => {
     })
 
     await test.step('Kiểm tra nhập Tiền YCBT tổng hợp chi phí chung', async () => {
-      const inputTienYCBTSelector = `${tonghopchiphichungTableSelector} #field_name`;
-      const tienYCBTInput = page.locator(inputTienYCBTSelector).nth(1); // lấy input thứ 2 (cột Số tiền KH YCBT)
+      // const inputTienYCBTSelector = `${tonghopchiphichungTableSelector} #field_name`;
+      const tienYCBTInput = page.getByRole('textbox').nth(1); // lấy input thứ 2 (cột Số tiền KH YCBT)
       // clear input trước
       await tienYCBTInput.fill('');
       await page.waitForTimeout(2000);
@@ -293,8 +293,8 @@ test('Màn xác nhận', async ({ page }) => {
     })
 
     await test.step('Kiểm tra nhập Hạng mục từ chối ở bảng tổng hợp chi phí chung', async () => {
-      const tuchoi = `${tonghopchiphichungTableSelector} #field_name`;
-      const hangMucTuChoiInput = page.locator(tuchoi).nth(2); // lấy input thứ 3 (cột Hạng mục từ chối)
+      // const tuchoi = `${tonghopchiphichungTableSelector} #field_name`;
+      const hangMucTuChoiInput = page.getByRole('textbox').nth(2); // lấy input thứ 3 (cột Hạng mục từ chối)
 
       // clear input trước
       await hangMucTuChoiInput.fill('');
@@ -334,15 +334,17 @@ test('Màn xác nhận', async ({ page }) => {
       const tonghopchiphingoaithuocTableSelector = '#tonghopchiphingoaithuoc';
       await page.click(`${tonghopchiphingoaithuocTableSelector}`)
 
-      const rejectCheckboxsSelector = `${tonghopchiphingoaithuocTableSelector} tbody .ant-checkbox-input[checked]`;
+    const rejectCheckboxsSelector = `${tonghopchiphingoaithuocTableSelector} tbody .ant-checkbox-input:not([checked])`;
+      const acceptCheckboxsSelector = `${tonghopchiphingoaithuocTableSelector} tbody .ant-checkbox-input[checked]`;
       //click random 1 checkbox
-      const checkboxCount = await page.locator(rejectCheckboxsSelector).count();
+      const checkboxCount = await page.locator(acceptCheckboxsSelector).count();
       if (checkboxCount === 0) {
         console.log('Không có checkbox nào đã được tích để từ chối.');
       } else {
+        console.log(`Tìm thấy ${checkboxCount} checkbox đã được tích để từ chối trong bảng tổng hợp chi phí chung.`);
         const randomIndex = Math.floor(Math.random() * checkboxCount);
-        await page.locator(rejectCheckboxsSelector).nth(randomIndex).click();
-        console.log(`Đã click từ chối checkbox thứ ${randomIndex + 1} trong tổng số ${checkboxCount} checkbox đã tích.`);
+        await page.locator(rejectCheckboxsSelector).nth(randomIndex - 1).click();
+        console.log(`Đã click từ chối checkbox thứ ${randomIndex} trong tổng số ${checkboxCount} checkbox đã tích.`);
       }
       // kiểm tra có collapse có text là AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG trong bảng tổng hợp chi phí chung không
       const collapseSelector = `${tonghopchiphichungTableSelector} .ant-collapse-item .ant-collapse-header:has-text("AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG")`;

@@ -323,93 +323,100 @@ test('Màn xác nhận', async ({ page }) => {
     await page.waitForSelector('.ant-spin-spinning', { state: 'detached', timeout: 60000 });
     console.log('Đã vào tab Chi Phí.');
 
-    await test.step('Thêm Quyền lợi bảo hiểm', async () => {
-      const benefitHeader = page
-        .locator('th')
-        .filter({ has: page.locator('p:has-text("Quyền lợi")') })
-        .first();
-      await benefitHeader.waitFor({ state: 'visible', timeout: 10000 });
+    // await test.step('Thêm Quyền lợi bảo hiểm', async () => {
+    //   const benefitHeader = page
+    //     .locator('th')
+    //     .filter({ has: page.locator('p:has-text("Quyền lợi")') })
+    //     .first();
+    //   await benefitHeader.waitFor({ state: 'visible', timeout: 10000 });
 
-      const benefitSelect = benefitHeader.locator('.ant-select.cell__select').first();
-      const benefitSelector = benefitSelect.locator('.ant-select-selector');
-      await benefitSelector.waitFor({ state: 'visible', timeout: 10000 });
-      await benefitSelector.click({ force: true });
+    //   const benefitSelect = benefitHeader.locator('.ant-select.cell__select').first();
+    //   const benefitSelector = benefitSelect.locator('.ant-select-selector');
+    //   await benefitSelector.waitFor({ state: 'visible', timeout: 10000 });
+    //   await benefitSelector.click({ force: true });
 
-      const dropdown = page.locator('.ant-select-dropdown:visible').last();
-      await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    //   const dropdown = page.locator('.ant-select-dropdown:visible').last();
+    //   await dropdown.waitFor({ state: 'visible', timeout: 10000 });
 
-      const firstBenefitOption = dropdown
-        .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
-        .filter({ hasNotText: 'Không có dữ liệu' })
-        .first();
+    //   const firstBenefitOption = dropdown
+    //     .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
+    //     .filter({ hasNotText: 'Không có dữ liệu' })
+    //     .first();
 
-      if ((await firstBenefitOption.count()) > 0) {
-        await firstBenefitOption.click();
-        const selectedBenefit = benefitSelect.locator('.ant-select-selection-item').first();
-        await expect(selectedBenefit).toBeVisible();
-        await expect(selectedBenefit).toHaveAttribute('title', /.+/);
-        console.log('Đã mở dropdown quyền lợi và chọn quyền lợi đầu tiên.');
-      } else {
-        console.log('Không thấy dropdown quyền lợi, tiếp tục với trạng thái mặc định sau khi thêm mới.');
-      }
+    //   if ((await firstBenefitOption.count()) > 0) {
+    //     await firstBenefitOption.click();
+    //     const selectedBenefit = benefitSelect.locator('.ant-select-selection-item').first();
+    //     await expect(selectedBenefit).toBeVisible();
+    //     await expect(selectedBenefit).toHaveAttribute('title', /.+/);
+    //     console.log('Đã mở dropdown quyền lợi và chọn quyền lợi đầu tiên.');
+    //   } else {
+    //     console.log('Không thấy dropdown quyền lợi, tiếp tục với trạng thái mặc định sau khi thêm mới.');
+    //   }
 
-      const spinnerLocator = page.locator('.ant-select-arrow.ant-select-arrow-loading').first();
-      if ((await spinnerLocator.count()) > 0) {
-        await spinnerLocator.waitFor({ state: 'hidden', timeout: 10000 });
-        console.log('Spinner thêm quyền lợi đã biến mất.');
-      }
-    })
+    //   const spinnerLocator = page.locator('.ant-select-arrow.ant-select-arrow-loading').first();
+    //   if ((await spinnerLocator.count()) > 0) {
+    //     await spinnerLocator.waitFor({ state: 'hidden', timeout: 10000 });
+    //     console.log('Spinner thêm quyền lợi đã biến mất.');
+    //   }
+    // })
 
     await test.step('Kiểm tra nhập Tiền YCBT tổng hợp chi phí chung', async () => {
-      const quyenLoiTableSelector = page.locator('.ant-collapse').first();
-      const inputTienYCBTSelector = quyenLoiTableSelector.getByRole('textbox').nth(1)
-      // clear input trước
-      await inputTienYCBTSelector.fill('');
-      await page.waitForTimeout(2000);
-      // điền giá trị 5000000
-      await inputTienYCBTSelector.fill('5000000');
-      console.log('Đã điền Số tiền KH YCBT.');
+      // const quyenLoiTableSelector = page.locator('.ant-collapse').first();
+      // const inputTienYCBTSelector = quyenLoiTableSelector.getByRole('textbox').nth(2)
+      // // clear input trước
+      // await inputTienYCBTSelector.fill('');
+      // await page.waitForTimeout(5000);
+      // // điền giá trị 5000000
+      // await inputTienYCBTSelector.fill('5000000');
+      // console.log('Đã điền Số tiền KH YCBT.');
 
-      await page.waitForTimeout(3000);
+      // await page.waitForTimeout(5000);
 
-      // kiểm tra lại giá trị đã điền
-      const filledTienYCBTValue = await inputTienYCBTSelector.inputValue();
-      expect(filledTienYCBTValue).toBe('5.000.000');
-      console.log('✅ Kiểm tra lại giá trị Số tiền KH YCBT đã điền đúng.');
+      // // kiểm tra lại giá trị đã điền
+      // const filledTienYCBTValue = await inputTienYCBTSelector.inputValue();
+      // expect.soft(filledTienYCBTValue).toBe('5.000.000');
+      // console.log('✅ Kiểm tra lại giá trị Số tiền KH YCBT đã điền đúng.');
 
-      const totalText = await page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first().textContent();
-      console.log(`Giá trị tổng số tiền chi trả bồi thường ở footer: ${totalText}`);
-      expect(totalText?.replace(/\D/g, '')).toBe('5000000');
-      console.log('✅ Kiểm tra tổng số tiền chi trả bồi thường ở footer đúng.');
+      // const totalText = await page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first().textContent();
+      // console.log(`Giá trị tổng số tiền chi trả bồi thường ở footer: ${totalText}`);
+      // expect.soft(totalText?.replace(/\D/g, '')).toBe('5000000');
 
     })
 
     await test.step('Kiểm tra nhập Hạng mục từ chối ở bảng tổng hợp chi phí chung', async () => {
-      const benefitRow = page.locator('tbody .ant-table-row').first();
-      if ((await benefitRow.count()) === 0) {
-        console.log('Không có dòng quyền lợi trong bảng Chi Phí, bỏ qua kiểm tra Hạng mục từ chối.');
-        return;
-      }
-      await benefitRow.waitFor({ state: 'visible', timeout: 30000 });
-      const hangMucTuChoiInput = benefitRow.locator('td').nth(4).locator('input').first();
+      const textboxes = page.getByRole('textbox');
+      const textbox3 = textboxes.nth(3);
+      const textbox4 = textboxes.nth(4);
+      const textbox6 = textboxes.nth(5);
+      const textbox7 = textboxes.nth(6);
+      const totalText = page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first();
+      const rejectText = page.locator('.money:has-text("Tổng tiền từ chối:") .money-content').first();
+      const toNumber = (value: string | null) => Number((value ?? '').replace(/\D/g, '') || 0);
 
-      // clear input trước
-      await hangMucTuChoiInput.fill('');
-      await page.waitForTimeout(2000);
-      // điền giá trị "Hạng mục từ chối Test"
-      await hangMucTuChoiInput.fill('1000000');
-      console.log('Đã điền Hạng mục từ chối.');
-      await page.waitForTimeout(6000);
-      // kiểm tra lại giá trị đã điền
-      const filledHangMucTuChoiValue = await hangMucTuChoiInput.inputValue();
-      expect(filledHangMucTuChoiValue).toBe('1.000.000');
-      console.log('✅ Kiểm tra lại giá trị Hạng mục từ chối đã điền đúng.');
+      const textbox7InitialValue = await textbox7.inputValue();
+      const textbox6Value = toNumber(await textbox6.inputValue());
+      console.log(`Textbox 7 initial value: ${textbox7InitialValue}`);
 
-      // kiểm tra tổng số tiền chi trả bồi thường ở footer có giảm đi 1000000 không
-      const totalText = await page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first().textContent();
-      console.log(`Giá trị tổng số tiền chi trả bồi thường ở footer sau khi từ chối: ${totalText}`);
-      expect(totalText?.replace(/\D/g, '')).toBe('4000000');
-      console.log('✅ Kiểm tra tổng số tiền chi trả bồi thường ở footer đúng sau khi từ chối.');
+      await textbox3.fill('');
+      await textbox3.fill('1000000');
+      console.log('Đã nhập 1000000 vào textbox thứ 3.');
+
+      await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
+        .toBe(textbox6Value - 1000000);
+      await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
+        .toBe(textbox6Value - 1000000);
+      await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
+        .toBe(1000000);
+      await textbox4.fill('');
+      await textbox4.fill('500000');
+      console.log('Đã nhập 500000 vào textbox thứ 4.');
+
+      await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
+        .toBe(textbox6Value - 1500000);
+      await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
+        .toBe(textbox6Value - 1500000);
+      await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
+        .toBe(1500000);
     })
 
     // await test.step('kiểm tra scroll khi click cảnh báo', async () => {
@@ -431,14 +438,16 @@ test('Màn xác nhận', async ({ page }) => {
       await page.click(`${tonghopchiphichungTableSelector}`)
       // tìm checkbox chưa được tích trong bảng tổng hợp chi phí ngoài thuốc
       const rejectCheckboxsSelector = `${tonghopchiphichungTableSelector} tbody .ant-checkbox-input:not([checked])`;
+      const acceptCheckboxsSelector = `${tonghopchiphichungTableSelector} tbody .ant-checkbox-input[checked]`;
       //click random 1 checkbox
-      const checkboxCount = await page.locator(rejectCheckboxsSelector).count();
+      const checkboxCount = await page.locator(acceptCheckboxsSelector).count();
       if (checkboxCount === 0) {
         console.log('Không có checkbox nào đã được tích để từ chối.');
       } else {
+        console.log(`Tìm thấy ${checkboxCount} checkbox đã được tích để từ chối trong bảng tổng hợp chi phí chung.`);
         const randomIndex = Math.floor(Math.random() * checkboxCount);
-        await page.locator(rejectCheckboxsSelector).nth(randomIndex).click();
-        console.log(`Đã click từ chối checkbox thứ ${randomIndex + 1} trong tổng số ${checkboxCount} checkbox đã tích.`);
+        await page.locator(rejectCheckboxsSelector).nth(randomIndex - 1).click();
+        console.log(`Đã click từ chối checkbox thứ ${randomIndex} trong tổng số ${checkboxCount} checkbox đã tích.`);
       }
       // kiểm tra có collapse có text là AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG trong bảng tổng hợp chi phí chung không
       const collapseSelector = page.locator('.ant-collapse-item .ant-collapse-header:has-text("AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG")').first();

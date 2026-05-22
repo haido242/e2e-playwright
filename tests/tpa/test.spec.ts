@@ -335,9 +335,9 @@ test('Màn xác nhận', async ({ page }) => {
       await benefitSelector.waitFor({ state: 'visible', timeout: 10000 });
       await benefitSelector.click({ force: true });
 
-      const dropdown = page.locator('.ant-select-dropdown:visible').last();
+      const dropdown = page.locator('.ant-select-dropdown').last();
       await dropdown.waitFor({ state: 'visible', timeout: 10000 });
-
+      console.log('Dropdown quyền lợi đã xuất hiện.', dropdown);
       const firstBenefitOption = dropdown
         .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
         .filter({ hasNotText: 'Không có dữ liệu' })
@@ -431,14 +431,16 @@ test('Màn xác nhận', async ({ page }) => {
       await page.click(`${tonghopchiphichungTableSelector}`)
       // tìm checkbox chưa được tích trong bảng tổng hợp chi phí ngoài thuốc
       const rejectCheckboxsSelector = `${tonghopchiphichungTableSelector} tbody .ant-checkbox-input:not([checked])`;
+      const acceptCheckboxsSelector = `${tonghopchiphichungTableSelector} tbody .ant-checkbox-input[checked]`;
       //click random 1 checkbox
-      const checkboxCount = await page.locator(rejectCheckboxsSelector).count();
+      const checkboxCount = await page.locator(acceptCheckboxsSelector).count();
       if (checkboxCount === 0) {
         console.log('Không có checkbox nào đã được tích để từ chối.');
       } else {
+        console.log(`Tìm thấy ${checkboxCount} checkbox đã được tích để từ chối trong bảng tổng hợp chi phí chung.`);
         const randomIndex = Math.floor(Math.random() * checkboxCount);
-        await page.locator(rejectCheckboxsSelector).nth(randomIndex).click();
-        console.log(`Đã click từ chối checkbox thứ ${randomIndex + 1} trong tổng số ${checkboxCount} checkbox đã tích.`);
+        await page.locator(rejectCheckboxsSelector).nth(randomIndex - 1).click();
+        console.log(`Đã click từ chối checkbox thứ ${randomIndex} trong tổng số ${checkboxCount} checkbox đã tích.`);
       }
       // kiểm tra có collapse có text là AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG trong bảng tổng hợp chi phí chung không
       const collapseSelector = page.locator('.ant-collapse-item .ant-collapse-header:has-text("AI DIỄN GIẢI TỪ CHỐI TỰ ĐỘNG")').first();
