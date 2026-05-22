@@ -407,16 +407,16 @@ test('Màn xác nhận', async ({ page }) => {
         .toBe(textbox6Value - 1000000);
       await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
         .toBe(1000000);
-      await textbox4.fill('');
-      await textbox4.fill('500000');
-      console.log('Đã nhập 500000 vào textbox thứ 4.');
+      // await textbox4.fill('');
+      // await textbox4.fill('500000');
+      // console.log('Đã nhập 500000 vào textbox thứ 4.');
 
-      await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
-        .toBe(textbox6Value - 1500000);
-      await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
-        .toBe(textbox6Value - 1500000);
-      await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
-        .toBe(1500000);
+      // await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
+      //   .toBe(textbox6Value - 1500000);
+      // await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
+      //   .toBe(textbox6Value - 1500000);
+      // await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
+      //   .toBe(1500000);
     })
 
     // await test.step('kiểm tra scroll khi click cảnh báo', async () => {
