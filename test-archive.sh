@@ -62,5 +62,19 @@ assert_no_path "${TMP}/playwright-report" "vùng đệm rỗng sau khi lưu tr�
 assert_no_path "${TMP}/results.xml"       "results.xml không còn ở vùng đệm"
 
 echo
+echo "== container chết giữa chừng không sinh báo cáo =="
+TMP2="$(mktemp -d)"
+trap 'rm -rf "$TMP" "$TMP2"' EXIT
+# TMP2 rỗng: không có playwright-report/, không có results.xml
+RUN_DIR2="$(archive_run "$TMP2" "${TMP2}/runs" "2026-08-11_130000_vbi-chrome" "vbi-chrome" "2026-08-11T13:00:00+07:00" 130)"
+
+assert_file "${RUN_DIR2}/meta.env"     "meta.env được ghi ra dù không có báo cáo"
+assert_eq "$(get_meta "${RUN_DIR2}/meta.env" HAS_REPORT)" "0"         "HAS_REPORT=0 khi không có báo cáo"
+assert_eq "$(get_meta "${RUN_DIR2}/meta.env" HAS_DATA)"   "0"         "HAS_DATA=0 khi không có data/"
+assert_eq "$(get_meta "${RUN_DIR2}/meta.env" TOTAL)"      "0"         "TOTAL=0 khi không có results.xml"
+assert_eq "$(get_meta "${RUN_DIR2}/meta.env" FAILED)"     "0"         "FAILED=0 khi không có results.xml"
+assert_eq "$(get_meta "${RUN_DIR2}/meta.env" EXIT_CODE)"  "130"       "EXIT_CODE ghi đúng"
+
+echo
 if [ "$FAILED" -eq 0 ]; then echo "TẤT CẢ ĐỀU ĐẠT"; else echo "CÓ ASSERT THẤT BẠI"; fi
 exit "$FAILED"
