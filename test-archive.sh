@@ -100,5 +100,38 @@ assert_file "${NEWEST}/data/abc.webm" "lần mới nhất giữ nguyên data/"
 assert_eq "$(get_meta "${NEWEST}/meta.env" HAS_DATA)" "1" "HAS_DATA của lần mới vẫn là 1"
 
 echo
+echo "== build-index.sh =="
+"${SCRIPT_DIR}/build-index.sh" "${TMP3}/runs" > /dev/null
+
+INDEX="${TMP3}/runs/index.html"
+assert_file "$INDEX" "index.html được sinh ra"
+
+grep -q "2026-08-03_100000_tpa-chrome" "$INDEX" \
+  && echo "  ok   index có lần chạy mới nhất" \
+  || { echo "  FAIL index thiếu lần chạy mới nhất"; FAILED=1; }
+
+grep -q "tpa-chrome" "$INDEX" \
+  && echo "  ok   index có tên project" \
+  || { echo "  FAIL index thiếu tên project"; FAILED=1; }
+
+grep -q "đã dọn bằng chứng" "$INDEX" \
+  && echo "  ok   index đánh dấu lần đã bị tỉa" \
+  || { echo "  FAIL index không đánh dấu lần đã bị tỉa"; FAILED=1; }
+
+grep -q "5/5" "$INDEX" \
+  && echo "  ok   index hiện số pass/tổng" \
+  || { echo "  FAIL index thiếu số pass/tổng"; FAILED=1; }
+
+# Dựng lại lần hai phải cho ra file y hệt — index là dữ liệu dẫn xuất
+cp "$INDEX" "${TMP3}/index-lan-1.html"
+"${SCRIPT_DIR}/build-index.sh" "${TMP3}/runs" > /dev/null
+if cmp -s "${TMP3}/index-lan-1.html" "$INDEX"; then
+  echo "  ok   dựng index hai lần cho kết quả giống hệt"
+else
+  echo "  FAIL dựng index hai lần ra kết quả khác nhau"
+  FAILED=1
+fi
+
+echo
 if [ "$FAILED" -eq 0 ]; then echo "TẤT CẢ ĐỀU ĐẠT"; else echo "CÓ ASSERT THẤT BẠI"; fi
 exit "$FAILED"
