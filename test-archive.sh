@@ -76,5 +76,27 @@ assert_eq "$(get_meta "${RUN_DIR2}/meta.env" FAILED)"     "0"         "FAILED=0 
 assert_eq "$(get_meta "${RUN_DIR2}/meta.env" EXIT_CODE)"  "130"       "EXIT_CODE ghi đúng"
 
 echo
+echo "== prune_old_runs =="
+TMP2="$(mktemp -d)"
+trap 'rm -rf "$TMP" "$TMP2"' EXIT
+
+# 3 lần chạy, giữ 2 → lần cũ nhất phải mất data/
+for stamp in 2026-08-01_100000 2026-08-02_100000 2026-08-03_100000; do
+  make_staging "$TMP2" 5 0
+  archive_run "$TMP2" "${TMP2}/runs" "${stamp}_tpa-chrome" "tpa-chrome" "x" 0 > /dev/null
+done
+
+prune_old_runs "${TMP2}/runs" 2
+
+OLDEST="${TMP2}/runs/2026-08-01_100000_tpa-chrome"
+NEWEST="${TMP2}/runs/2026-08-03_100000_tpa-chrome"
+
+assert_no_path "${OLDEST}/data" "lần cũ nhất bị xoá data/"
+assert_file "${OLDEST}/index.html" "lần cũ nhất vẫn giữ index.html"
+assert_eq "$(get_meta "${OLDEST}/meta.env" HAS_DATA)" "0" "HAS_DATA chuyển thành 0 sau khi tỉa"
+assert_file "${NEWEST}/data/abc.webm" "lần mới nhất giữ nguyên data/"
+assert_eq "$(get_meta "${NEWEST}/meta.env" HAS_DATA)" "1" "HAS_DATA của lần mới vẫn là 1"
+
+echo
 if [ "$FAILED" -eq 0 ]; then echo "TẤT CẢ ĐỀU ĐẠT"; else echo "CÓ ASSERT THẤT BẠI"; fi
 exit "$FAILED"

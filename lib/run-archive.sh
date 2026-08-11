@@ -66,3 +66,25 @@ EOF
 
   echo "$run_dir"
 }
+
+# prune_old_runs <runs_dir> <keep>
+#
+# Giữ nguyên `keep` lần chạy mới nhất. Các lần cũ hơn bị xoá data/ (video, trace)
+# nhưng vẫn còn index.html — báo cáo Playwright nhúng sẵn kết quả trong index.html
+# nên vẫn mở được danh sách test và thông báo lỗi, chỉ mất bằng chứng nặng.
+prune_old_runs() {
+  local runs_dir="$1" keep="$2"
+  [ -d "$runs_dir" ] || return 0
+
+  # Tên thư mục bắt đầu bằng YYYY-MM-DD_HHMMSS nên sort ngược = mới nhất trước
+  find "$runs_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
+    | sort -r \
+    | tail -n +$((keep + 1)) \
+    | while IFS= read -r name; do
+        local run_dir="${runs_dir}/${name}"
+        if [ -d "${run_dir}/data" ]; then
+          rm -rf "${run_dir}/data"
+          set_meta "${run_dir}/meta.env" HAS_DATA 0
+        fi
+      done
+}
