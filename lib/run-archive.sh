@@ -20,6 +20,13 @@ set_meta() {
   fi
 }
 
+# list_run_dirs <runs_dir>
+# In ra tên các thư mục lần chạy, mới nhất trước.
+# Tên có dạng YYYY-MM-DD_HHMMSS_<project> nên sort ngược là ra thứ tự thời gian.
+list_run_dirs() {
+  find "$1" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -r
+}
+
 # archive_run <staging_dir> <runs_dir> <run_id> <project> <started_at> <exit_code>
 #
 # Chuyển báo cáo từ vùng đệm sang runs/<run_id>/ rồi ghi meta.env.
@@ -77,8 +84,7 @@ prune_old_runs() {
   [ -d "$runs_dir" ] || return 0
 
   # Tên thư mục bắt đầu bằng YYYY-MM-DD_HHMMSS nên sort ngược = mới nhất trước
-  find "$runs_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
-    | sort -r \
+  list_run_dirs "$runs_dir" \
     | tail -n +$((keep + 1)) \
     | while IFS= read -r name; do
         local run_dir="${runs_dir}/${name}"

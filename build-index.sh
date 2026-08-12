@@ -57,7 +57,7 @@ while IFS= read -r name; do
       <td>${link}</td>
     </tr>
 "
-done < <(find "$RUNS_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -r)
+done < <(list_run_dirs "$RUNS_DIR")
 
 if [ -z "$rows" ]; then
   rows='    <tr><td colspan="7" class="muted">Chưa có lần chạy nào.</td></tr>
