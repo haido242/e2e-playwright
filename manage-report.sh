@@ -100,7 +100,7 @@ migrate() {
         echo -e "${YELLOW}⚠️  Không thấy báo cáo cũ ở ${old_report}, bỏ qua${NC}"; return 0
     fi
 
-    local legacy_dir="${RUNS_DIR}/legacy"
+    local legacy_dir="${RUNS_DIR}/0000-00-00_000000_legacy"
     echo -e "${BLUE}📦 Chuyển báo cáo cũ thành run 'legacy'...${NC}"
     echo -e "${YELLOW}   Dung lượng sẽ được giải phóng: $(du -sh "${old_report}/data" 2>/dev/null | cut -f1)${NC}"
 
@@ -115,7 +115,7 @@ migrate() {
     fi
 
     cat > "${legacy_dir}/meta.env" <<EOF
-RUN_ID=legacy
+RUN_ID=0000-00-00_000000_legacy
 PROJECT=legacy
 STARTED_AT=$(date -Iseconds -r "${legacy_dir}/index.html" 2>/dev/null || date -Iseconds)
 FINISHED_AT=$(date -Iseconds)
@@ -126,9 +126,14 @@ HAS_REPORT=1
 HAS_DATA=0
 EOF
 
-    rm -rf "$old_report"
-    reindex
-    echo -e "${GREEN}✅ Đã chuyển xong và dọn báo cáo cũ${NC}"
+    if [ -f "${legacy_dir}/index.html" ]; then
+        rm -rf "$old_report"
+        reindex
+        echo -e "${GREEN}✅ Đã chuyển xong và dọn báo cáo cũ${NC}"
+    else
+        echo -e "${RED}❌ Không chuyển được index.html sang ${legacy_dir}; giữ nguyên ${old_report} để không mất dữ liệu${NC}"
+        return 1
+    fi
 }
 
 case "$1" in
