@@ -17,6 +17,7 @@ RUNS_DIR="${ARTIFACT_DIR}/runs"
 PID_FILE="${ARTIFACT_DIR}/.report-server.pid"
 LOG_FILE="${ARTIFACT_DIR}/.report-server.log"
 LOCK_FILE="${ARTIFACT_DIR}/.run.lock"
+HTTP_SERVER="${PROJECT_DIR}/node_modules/.bin/http-server"
 
 PROJECT_NAME="${1:-tpa-chrome}"
 
@@ -110,7 +111,7 @@ if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo -e "\n${GREEN}✅ Report server đang chạy sẵn${NC}"
 else
     echo -e "\n${YELLOW}🌐 Khởi động report server...${NC}"
-    nohup npx http-server "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
+    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
     if kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then

@@ -11,6 +11,7 @@ ARTIFACT_DIR="${PROJECT_DIR}/artifacts"
 RUNS_DIR="${ARTIFACT_DIR}/runs"
 PID_FILE="${ARTIFACT_DIR}/.report-server.pid"
 LOG_FILE="${ARTIFACT_DIR}/.report-server.log"
+HTTP_SERVER="${PROJECT_DIR}/node_modules/.bin/http-server"
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
@@ -36,7 +37,7 @@ start_server() {
     fi
     mkdir -p "$RUNS_DIR"
     echo -e "${BLUE}🌐 Khởi động report server...${NC}"
-    nohup npx http-server "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
+    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
     if is_running; then
