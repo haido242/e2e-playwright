@@ -71,6 +71,13 @@ docker run --rm \
 
 TEST_EXIT_CODE=$?
 
+# Image playwright chạy bằng root (không đổi USER trong Dockerfile) nên mọi file ghi ra
+# /artifacts đều thành sở hữu root trên host. Không chown lại thì các bước archive/prune bên
+# dưới (mv, rm) sẽ permission denied với bất kỳ user nào khác root gọi script (CI, jenkins...).
+# Chạy qua 1 container root tạm để chown, không cần sudo trên host.
+docker run --rm -v "${ARTIFACT_DIR}:/artifacts" alpine chown -R "$(id -u):$(id -g)" /artifacts \
+    || echo -e "${YELLOW}⚠️  Không chown lại được artifacts/ (bỏ qua)${NC}"
+
 if [ -f "${ARTIFACT_DIR}/results.xml" ]; then
     FAILED_COUNT=$(grep -o '<failure' "${ARTIFACT_DIR}/results.xml" | wc -l)
     if [ "$FAILED_COUNT" -gt 0 ]; then
