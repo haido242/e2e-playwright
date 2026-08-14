@@ -60,7 +60,8 @@ test('Thêm thư mục', async ({ page }) => {
 
   const folderName = `E2E Test Folder`;
   await page.fill(`${drawerSelector} input[id="name"]`, folderName);
-  await page.fill(`${drawerSelector} input[id="maDonVi"]`, '31');
+  // Field "Mã đơn vị" (#maDonVi) đã bị gỡ khỏi drawer; thay bằng select "Loại hồ sơ" (#type)
+  // vốn đã có sẵn giá trị mặc định nên không cần chọn.
   await page.click(`${drawerSelector} button:has-text("Tạo")`);
   console.log(`Đã điền tên thư mục: "${folderName}" và submit.`);
 
@@ -243,10 +244,11 @@ test('Màn xác nhận', async ({ page }) => {
     await page.screenshot({ path: 'artifacts/test-results/man-xac-nhan-ho-va-ten-nyctt.png', fullPage: true });
 
 
-  // Chỉ thao tác với field "Chuẩn hóa" đầu tiên trong khối datapoints để tránh đụng field khác
-  const chuanhoaField = datapointsBox.locator('div[name^="datapoint-"]').filter({
-    has: page.locator('div:has-text("Chuẩn hóa")')
-  }).first();
+  // Field "Chuẩn hóa" của bệnh viện.
+  // Trước đây neo vào div[name^="datapoint-"], nhưng styled-components 6 không forward
+  // prop `name` xuống DOM nữa nên attribute đó không còn tồn tại. Neo vào id của input
+  // (#benhvien) - ổn định và duy nhất: input OCR cùng id nằm ngoài .ant-select.
+  const chuanhoaField = datapointsBox.locator('.ant-select:has(input#benhvien)');
 
   await chuanhoaField.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -283,10 +285,8 @@ test('Màn xác nhận', async ({ page }) => {
     console.log(`✅ Giá trị Chuẩn hóa sau khi chọn: ${filledChuanhoaValue}`);
   }
 
-    const moTaNguyenNhanField = datapointsBox.locator('div[name^="datapoint-"]').filter({
-      has: page.locator('div:has-text("Mô tả nguyên nhân")')
-    }).first();
-    const moTaNguyenNhanInput = moTaNguyenNhanField.locator('textarea#motanguyennhan');
+    // Neo trực tiếp vào textarea (xem ghi chú về styled-components ở field Chuẩn hóa)
+    const moTaNguyenNhanInput = datapointsBox.locator('textarea#motanguyennhan');
     await moTaNguyenNhanInput.waitFor({ state: 'visible', timeout: 10000 });
     const moTaNguyenNhanValue = await moTaNguyenNhanInput.inputValue();
     console.log(`Giá trị Mô tả nguyên nhân: ${moTaNguyenNhanValue}`);
@@ -323,16 +323,30 @@ test('Màn xác nhận', async ({ page }) => {
     await page.waitForSelector('.ant-spin-spinning', { state: 'detached', timeout: 60000 });
     console.log('Đã vào tab Chi Phí.');
 
+    // Mọi thao tác trên màn chi phí đều làm app gọi backend tính lại và mount
+    // .ant-spin-spinning; trong lúc đó bảng re-render, dropdown đang mở bị đóng và
+    // giá trị vừa nhập bị response cũ ghi đè. Lúc rảnh trang không có .ant-spin-spinning
+    // nào nên chờ về 0 là đủ.
+    const recalcSpinner = page.locator('.ant-spin-spinning');
+    const waitRecalcDone = async () => {
+      await recalcSpinner.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+      await expect(recalcSpinner).toHaveCount(0, { timeout: 30000 });
+    };
+
     await test.step('Thêm Quyền lợi bảo hiểm', async () => {
       const benefitHeader = page
         .locator('th')
         .filter({ has: page.locator('p:has-text("Quyền lợi")') })
         .first();
-      await benefitHeader.waitFor({ state: 'visible', timeout: 10000 });
+      // Panel chi phí hiển thị CustomSpin cho tới khi initRequest xong; với tài liệu vừa
+      // upload, init mất hơn 10s nên bảng quyền lợi chưa kịp render. Nới thời gian chờ.
+      await benefitHeader.waitFor({ state: 'visible', timeout: 60000 });
 
       const benefitSelect = benefitHeader.locator('.ant-select.cell__select').first();
       const benefitSelector = benefitSelect.locator('.ant-select-selector');
       await benefitSelector.waitFor({ state: 'visible', timeout: 10000 });
+      // Mở dropdown khi trang còn đang tính lại thì nó bị đóng ngay sau đó
+      await waitRecalcDone();
       await benefitSelector.click({ force: true });
 
       const dropdown = page.locator('.ant-select-dropdown').last();
@@ -365,21 +379,25 @@ test('Màn xác nhận', async ({ page }) => {
       const inputTienYCBTSelector = quyenLoiTableSelector.getByRole('textbox').nth(1)
       // clear input trước
       await inputTienYCBTSelector.fill('');
-      await page.waitForTimeout(2000);
+      await waitRecalcDone();
       // điền giá trị 5000000
       await inputTienYCBTSelector.fill('5000000');
+      await waitRecalcDone();
       console.log('Đã điền Số tiền KH YCBT.');
 
-      await page.waitForTimeout(3000);
-
       // kiểm tra lại giá trị đã điền
-      const filledTienYCBTValue = await inputTienYCBTSelector.inputValue();
-      expect(filledTienYCBTValue).toBe('5.000.000');
+      await expect(inputTienYCBTSelector).toHaveValue('5.000.000');
       console.log('✅ Kiểm tra lại giá trị Số tiền KH YCBT đã điền đúng.');
 
+      // App có tính năng "AI diễn giải từ chối tự động": một số hạng mục bị từ chối ngay
+      // khi xác nhận, nên số tiền chi trả không còn bằng đúng số tiền YCBT đã điền.
+      // Kiểm tra theo công thức nghiệp vụ thay vì hằng số phụ thuộc kết quả OCR của fixture.
+      const soTien = (s?: string | null) => Number(s?.replace(/\D/g, ''));
+
+      const tuChoiText = await page.locator('.money:has-text("Tổng tiền từ chối:") .money-content').first().textContent();
       const totalText = await page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first().textContent();
-      console.log(`Giá trị tổng số tiền chi trả bồi thường ở footer: ${totalText}`);
-      expect(totalText?.replace(/\D/g, '')).toBe('5000000');
+      console.log(`Tổng tiền từ chối: ${tuChoiText} | Số tiền chi trả bồi thường: ${totalText}`);
+      expect(soTien(totalText)).toBe(5000000 - soTien(tuChoiText));
       console.log('✅ Kiểm tra tổng số tiền chi trả bồi thường ở footer đúng.');
 
     })
@@ -551,7 +569,8 @@ test('Xóa folder', async ({ page }) => {
   const e2e_folder_selector = '.ant-table-row:has-text("E2E Test Folder")';
   await page.waitForSelector(e2e_folder_selector, { timeout: 10000 });
   console.log('Đã tìm thấy folder E2E Test Folder.');
-  await page.click(`${e2e_folder_selector} span[aria-label="setting"]`);
+  // .first(): có thể còn folder tồn dư từ lần chạy fail trước, tránh strict mode violation
+  await page.locator(`${e2e_folder_selector} span[aria-label="setting"]`).first().click();
   console.log('Đã click nút cài đặt của folder.');
   await page.waitForURL(/folders\/\d+\/general/, { timeout: 10000 });
   console.log('Đã vào trang cài đặt folder.');
@@ -559,13 +578,14 @@ test('Xóa folder', async ({ page }) => {
   await page.waitForSelector(deleteButtonSelector, { timeout: 10000 });
   await page.click(deleteButtonSelector);
   console.log('Đã click nút "Xóa Thư Mục".');
-  const inputNameForDeleteSelector = '#name';
-  await page.waitForSelector(inputNameForDeleteSelector, { timeout: 5000 });
-  await page.fill(inputNameForDeleteSelector, 'E2E Test Folder');
+  // Trang settings phía sau modal cũng có input #name ("Tên thư mục"), nên phải scope
+  // vào modal, không thì fill trúng ô sai và nút "Xóa" không bao giờ enable.
+  const deleteModal = page.locator('.ant-modal-content');
+  const inputNameForDelete = deleteModal.locator('#name');
+  await inputNameForDelete.waitFor({ state: 'visible', timeout: 5000 });
+  await inputNameForDelete.fill('E2E Test Folder');
   console.log('Đã điền tên folder để xác nhận xóa.');
-  await page.waitForTimeout(1000); // đợi 1s cho button enabled
-  const confirmDeleteButtonSelector = '.ant-btn.ant-btn-primary:has-text("Xóa")';
-  await page.click(confirmDeleteButtonSelector);
+  await deleteModal.locator('.ant-btn.ant-btn-primary:has-text("Xóa")').click();
   console.log('Đã click nút xác nhận xóa folder.');
   // Chờ điều hướng về trang /folders
   await page.waitForURL('/folders', { timeout: 10000 });

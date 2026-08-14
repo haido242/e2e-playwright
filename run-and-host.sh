@@ -1,54 +1,68 @@
 #!/bin/bash
 
 #####################################################
-# E2E Test Runner with Auto Report Hosting
-# Chạy test và tự động host report trên port 9323
+# E2E Test Runner with Run History
+# Chạy test, lưu kết quả thành một lần chạy riêng, rồi host kho lịch sử
 # Usage: ./run-and-host.sh [PROJECT_NAME]
 # Example: ./run-and-host.sh tpa-chrome
 #####################################################
 
-# Cấu hình
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPORT_PORT=9323
-CONTAINER_NAME="playwright-report-server"
 IMAGE_NAME="haido2402/e2e-playwright-e2e:latest"
+KEEP_ATTACHMENTS=20
 
-# Lấy project name từ tham số đầu tiên, mặc định là tpa-chrome
+ARTIFACT_DIR="${PROJECT_DIR}/artifacts"
+RUNS_DIR="${ARTIFACT_DIR}/runs"
+PID_FILE="${ARTIFACT_DIR}/.report-server.pid"
+LOG_FILE="${ARTIFACT_DIR}/.report-server.log"
+LOCK_FILE="${ARTIFACT_DIR}/.run.lock"
+HTTP_SERVER="${PROJECT_DIR}/node_modules/.bin/http-server"
+
 PROJECT_NAME="${1:-tpa-chrome}"
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+
+# Tên project đi thẳng vào đường dẫn thư mục nên phải chặn ký tự lạ
+if ! echo "$PROJECT_NAME" | grep -qE '^[a-z0-9-]+$'; then
+    echo -e "${RED}❌ Tên project không hợp lệ: '$PROJECT_NAME' (chỉ nhận a-z, 0-9, dấu gạch ngang)${NC}"
+    exit 2
+fi
+
+mkdir -p "$ARTIFACT_DIR" "$RUNS_DIR"
+
+# Hai lần chạy song song sẽ tranh vùng đệm artifacts/playwright-report.
+# flock cho lần thứ hai chờ thay vì trộn kết quả của nhau.
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    echo -e "${YELLOW}⏳ Đang có lần chạy khác, chờ tới lượt...${NC}"
+    flock 200
+fi
+
+. "${PROJECT_DIR}/lib/run-archive.sh"
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}🚀 E2E Test Runner & Report Host${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${YELLOW}📋 Project: $PROJECT_NAME${NC}"
 
-cd "$PROJECT_DIR"
+cd "$PROJECT_DIR" || exit 1
 
-# Bước 1: Pull latest image
 echo -e "\n${YELLOW}📥 Pulling latest Docker image...${NC}"
 docker pull "$IMAGE_NAME"
 
-# Bước 2: Stop và remove report server cũ nếu đang chạy
-echo -e "\n${YELLOW}🛑 Stopping old report server (if exists)...${NC}"
-docker stop "$CONTAINER_NAME" 2>/dev/null || true
-docker rm "$CONTAINER_NAME" 2>/dev/null || true
+# Mốc thời gian lấy TRƯỚC khi chạy: mã lần chạy phản ánh lúc test khởi động,
+# không phải lúc lưu trữ (một lần chạy có thể kéo 15 phút).
+STARTED_AT="$(date -Iseconds)"
+RUN_ID="$(date +%Y-%m-%d_%H%M%S)_${PROJECT_NAME}"
 
-# Bước 3: Chạy E2E tests
-# Bước 3: Chạy E2E tests
 echo -e "\n${BLUE}=========================================${NC}"
 echo -e "${BLUE}🧪 Running E2E Tests${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
-# Thêm biến --rm và đảm bảo bắt được exit code chính xác
 docker run --rm \
   --env-file .env \
-  -v "${PROJECT_DIR}/artifacts:/artifacts" \
+  -v "${ARTIFACT_DIR}:/artifacts" \
   -v "${PROJECT_DIR}/tests:/runner/tests" \
   -v "${PROJECT_DIR}/playwright.config.ts:/runner/playwright.config.ts" \
   -v "${PROJECT_DIR}/.auth:/runner/.auth" \
@@ -57,57 +71,33 @@ docker run --rm \
 
 TEST_EXIT_CODE=$?
 
-# QUAN TRỌNG: Kiểm tra file kết quả nếu cần chắc chắn hơn
-if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
-    FAILED_COUNT=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+if [ -f "${ARTIFACT_DIR}/results.xml" ]; then
+    FAILED_COUNT=$(grep -o '<failure' "${ARTIFACT_DIR}/results.xml" | wc -l)
     if [ "$FAILED_COUNT" -gt 0 ]; then
         TEST_EXIT_CODE=1
     fi
 fi
 
-# Bước 4: Kiểm tra kết quả test
+# Lưu trữ chạy TRƯỚC khi báo pass/fail: lần fail mới là lần cần xem lại bằng chứng nhất.
+# Mọi lỗi ở đây chỉ cảnh báo, không được nuốt mã thoát của test.
+echo -e "\n${YELLOW}📦 Lưu lần chạy vào kho...${NC}"
+RUN_DIR="$(archive_run "$ARTIFACT_DIR" "$RUNS_DIR" "$RUN_ID" "$PROJECT_NAME" "$STARTED_AT" "$TEST_EXIT_CODE")" \
+    || echo -e "${RED}⚠️  Lưu trữ thất bại${NC}"
+prune_old_runs "$RUNS_DIR" "$KEEP_ATTACHMENTS" \
+    || echo -e "${RED}⚠️  Tỉa bằng chứng cũ thất bại${NC}"
+"${PROJECT_DIR}/build-index.sh" "$RUNS_DIR" > /dev/null \
+    || echo -e "${RED}⚠️  Dựng index thất bại${NC}"
+
 if [ $TEST_EXIT_CODE -eq 0 ]; then
     echo -e "\n${GREEN}✅ Tests PASSED${NC}"
 else
     echo -e "\n${RED}❌ Tests FAILED (Exit code: $TEST_EXIT_CODE)${NC}"
 fi
 
-# Bước 5: Kiểm tra report có tồn tại không
-REPORT_DIR="${PROJECT_DIR}/artifacts/playwright-report"
-if [ ! -d "$REPORT_DIR" ] || [ ! -f "$REPORT_DIR/index.html" ]; then
-    echo -e "${RED}❌ Report not found at $REPORT_DIR${NC}"
-    exit 1
-fi
-
-# Bước 6: Host report với Nginx container
-echo -e "\n${BLUE}=========================================${NC}"
-echo -e "${BLUE}🌐 Starting Report Server${NC}"
-echo -e "${BLUE}=========================================${NC}"
-
-docker run -d \
-  --name "$CONTAINER_NAME" \
-  -p "$REPORT_PORT:80" \
-  -v "${REPORT_DIR}:/usr/share/nginx/html:ro" \
-  --restart unless-stopped \
-  nginx:alpine
-
-# Đợi server start
-sleep 2
-
-# Kiểm tra container đã chạy chưa
-if docker ps | grep -q "$CONTAINER_NAME"; then
-    echo -e "${GREEN}✅ Report server started successfully${NC}"
-else
-    echo -e "${RED}❌ Failed to start report server${NC}"
-    exit 1
-fi
-
-# Bước 7: Parse test results (optional)
-if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
-    TOTAL=$(grep -o '<testcase' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
-    FAILED=$(grep -o '<failure' "${PROJECT_DIR}/artifacts/results.xml" | wc -l)
+if [ -f "${RUN_DIR}/results.xml" ]; then
+    TOTAL=$(grep -o '<testcase' "${RUN_DIR}/results.xml" | wc -l)
+    FAILED=$(grep -o '<failure' "${RUN_DIR}/results.xml" | wc -l)
     PASSED=$((TOTAL - FAILED))
-    
     echo -e "\n${BLUE}=========================================${NC}"
     echo -e "${BLUE}📊 Test Results Summary${NC}"
     echo -e "${BLUE}=========================================${NC}"
@@ -116,28 +106,33 @@ if [ -f "${PROJECT_DIR}/artifacts/results.xml" ]; then
     echo -e "  📝 Total:  $TOTAL"
 fi
 
-# Bước 8: Hiển thị thông tin truy cập
+# Khởi động server nếu chưa chạy. Không giết server cũ: link team đang mở vẫn sống.
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    echo -e "\n${GREEN}✅ Report server đang chạy sẵn${NC}"
+else
+    echo -e "\n${YELLOW}🌐 Khởi động report server...${NC}"
+    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    sleep 2
+    if kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+        echo -e "${GREEN}✅ Report server đã chạy${NC}"
+    else
+        echo -e "${RED}❌ Không khởi động được report server, xem $LOG_FILE${NC}"
+    fi
+fi
+
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-if [ -z "$SERVER_IP" ]; then
-    SERVER_IP=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
-fi
-if [ -z "$SERVER_IP" ]; then
-    SERVER_IP="localhost"
-fi
+[ -z "$SERVER_IP" ] && SERVER_IP="localhost"
 
 echo -e "\n${BLUE}=========================================${NC}"
-echo -e "${GREEN}✅ Report is now available at:${NC}"
-echo -e "${BLUE}=========================================${NC}"
-echo -e "  🌐 ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}${NC}"
+echo -e "${GREEN}✅ Kho lịch sử:${NC}  ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}/${NC}"
+echo -e "${GREEN}✅ Lần chạy này:${NC} ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}/${RUN_ID}/${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
-# Bước 9: Hiển thị commands để quản lý
-echo -e "\n${BLUE}💡 Useful commands:${NC}"
-echo -e "  Stop server:    ${YELLOW}docker stop $CONTAINER_NAME${NC}"
-echo -e "  Start server:   ${YELLOW}docker start $CONTAINER_NAME${NC}"
-echo -e "  Restart server: ${YELLOW}docker restart $CONTAINER_NAME${NC}"
-echo -e "  View logs:      ${YELLOW}docker logs -f $CONTAINER_NAME${NC}"
-echo -e "  Remove server:  ${YELLOW}docker rm -f $CONTAINER_NAME${NC}"
+echo -e "\n${BLUE}💡 Lệnh hữu ích:${NC}"
+echo -e "  Dừng server:   ${YELLOW}./manage-report.sh stop${NC}"
+echo -e "  Trạng thái:    ${YELLOW}./manage-report.sh status${NC}"
+echo -e "  Dựng lại index:${YELLOW} ./manage-report.sh reindex${NC}"
 
 echo -e "\n${GREEN}🎉 Done!${NC}\n"
 

@@ -289,6 +289,26 @@ npx playwright test --headed
 
 ---
 
+## Kho lịch sử các lần chạy
+
+Mỗi lần `./run-and-host.sh <project>` sẽ lưu kết quả thành một thư mục riêng trong
+`artifacts/runs/<YYYY-MM-DD_HHMMSS_project>/` và sinh lại trang danh sách.
+
+- Danh sách mọi lần chạy: `http://<server>:9323/`
+- Một lần chạy cụ thể: `http://<server>:9323/<run-id>/` — URL này không bao giờ đổi,
+  dán vào ticket được.
+
+Video và trace chỉ giữ cho **20 lần chạy gần nhất** (`KEEP_ATTACHMENTS` trong
+`run-and-host.sh`). Các lần cũ hơn vẫn mở được báo cáo — tên test, từng bước, thông báo
+lỗi — nhưng bấm video sẽ không ra; trang danh sách đánh dấu "đã dọn bằng chứng".
+
+Quản lý server: `./manage-report.sh start|stop|status|logs|url|reindex`.
+
+Server chạy bằng `nohup` nên không sống qua lần khởi động lại máy; sau khi reboot cần
+chạy `./manage-report.sh start`.
+
+---
+
 ## 5. Xem Kết Quả
 
 ### 📊 Kết quả test lưu trong `artifacts/`:
