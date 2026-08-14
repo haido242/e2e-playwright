@@ -19,13 +19,15 @@ test('Trang chủ hiển thị tiêu đề đúng', async ({ page }) => {
 
 // Test đăng nhập sai - Sử dụng context riêng KHÔNG có storageState
 test('Đăng nhập sai hiển thị lỗi', async ({ browser }) => {
-  const context = await browser.newContext({ 
-    storageState: undefined
+  // Lấy baseURL của chính project thay vì đọc env var - trước đây dòng này dùng
+  // TPA_BASE_URL (sót lại khi copy spec của TPA) nên test luôn chạy vào môi trường TPA.
+  const context = await browser.newContext({
+    storageState: undefined,
+    baseURL: test.info().project.use.baseURL,
   });
   const page = await context.newPage();
-  
-  const baseURL = process.env.TPA_BASE_URL || 'http://localhost:3000';
-  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
   await page.fill('#email', 'wrong-email@example.com');
   await page.fill('#password', 'wrongpassword');
@@ -177,7 +179,8 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
 test('Tải tài liệu lên', uploadTestFunction);
 
 test('Màn xác nhận', async ({ page }) => {
-  test.setTimeout(5 * 60 * 1000); // 5 phút
+  // 10 phút: riêng chờ backend tính chi phí đã có thể mất 3 phút
+  test.setTimeout(10 * 60 * 1000);
   
   // Đã đăng nhập sẵn qua storageState - không cần login nữa!
   await test.step('Vào màn xác nhận', async () => {
@@ -320,7 +323,9 @@ test('Màn xác nhận', async ({ page }) => {
     await page.click(costTabSelector);
     // Chờ tab chi phí load xong hoàn toàn trước khi thao tác bảng
     await expect(page.locator('button:has-text("Xác nhận chi phí")')).toBeVisible({ timeout: 20000 });
-    await page.waitForSelector('.ant-spin-spinning', { state: 'detached', timeout: 60000 });
+    // App poll GET .../expenses/status mỗi ~3s, trả 404 tới khi backend tính xong chi phí;
+    // trong lúc đó panel giữ nguyên spinner. Việc này có thể mất vài phút.
+    await page.waitForSelector('.ant-spin-spinning', { state: 'detached', timeout: 180000 });
     console.log('Đã vào tab Chi Phí.');
 
     await test.step('Thêm Quyền lợi bảo hiểm', async () => {

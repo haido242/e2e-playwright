@@ -19,13 +19,15 @@ test('Trang chủ hiển thị tiêu đề đúng', async ({ page }) => {
 
 // Test đăng nhập sai - Sử dụng context riêng KHÔNG có storageState
 test('Đăng nhập sai hiển thị lỗi', async ({ browser }) => {
-  const context = await browser.newContext({ 
-    storageState: undefined
+  // Lấy baseURL của chính project thay vì đọc env var - trước đây dòng này dùng
+  // TPA_BASE_URL (sót lại khi copy spec của TPA) nên test luôn chạy vào môi trường TPA.
+  const context = await browser.newContext({
+    storageState: undefined,
+    baseURL: test.info().project.use.baseURL,
   });
   const page = await context.newPage();
-  
-  const baseURL = process.env.TPA_BASE_URL || 'http://localhost:3000';
-  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
   await page.fill('#email', 'wrong-email@example.com');
   await page.fill('#password', 'wrongpassword');
@@ -384,37 +386,56 @@ test('Màn xác nhận', async ({ page }) => {
     })
 
     await test.step('Kiểm tra nhập Hạng mục từ chối ở bảng tổng hợp chi phí chung', async () => {
-      const textboxes = page.getByRole('textbox');
-      const textbox3 = textboxes.nth(3);
-      const textbox4 = textboxes.nth(4);
-      const textbox6 = textboxes.nth(5);
-      const textbox7 = textboxes.nth(6);
+      // Trước đây neo bằng getByRole('textbox').nth(3..6) - chỉ số tuyệt đối giữa hơn 120
+      // textbox của cả trang, nên nth(3) rơi vào cột readonly "Hạn mức/ngày" và fill treo
+      // tới hết timeout. Neo theo tên cột trong bảng "Quyền lợi bảo hiểm" để không phụ
+      // thuộc thứ tự phần tử ngoài bảng.
+      const benefitTable = page
+        .locator('.ant-collapse-item')
+        .filter({ hasText: 'Quyền lợi bảo hiểm' })
+        .first()
+        .locator('table')
+        .first();
+
+      const cellInput = async (columnName: string) => {
+        const index = await benefitTable
+          .locator('thead th')
+          .evaluateAll((ths, name) => ths.findIndex(th => (th.textContent || '').includes(name)), columnName);
+        expect(index, `Không tìm thấy cột "${columnName}" trong bảng quyền lợi`).toBeGreaterThan(-1);
+        return benefitTable.locator('tbody tr').first().locator('td').nth(index).locator('input');
+      };
+
+      const hangMucTuChoiInput = await cellInput('Hạng mục từ chối');
+      const tienYCBTInput = await cellInput('Tiền YCBT');
+      const thanhToanInput = await cellInput('S.T thanh toán');
+
       const totalText = page.locator('.money:has-text("Số tiền chi trả bồi thường:") .money-content').first();
       const rejectText = page.locator('.money:has-text("Tổng tiền từ chối:") .money-content').first();
       const toNumber = (value: string | null) => Number((value ?? '').replace(/\D/g, '') || 0);
 
-      const textbox7InitialValue = await textbox7.inputValue();
-      const textbox6Value = toNumber(await textbox6.inputValue());
-      console.log(`Textbox 7 initial value: ${textbox7InitialValue}`);
+      const thanhToanInitialValue = await thanhToanInput.inputValue();
+      const tienYCBTValue = toNumber(await tienYCBTInput.inputValue());
+      console.log(`S.T thanh toán ban đầu: ${thanhToanInitialValue} | Tiền YCBT: ${tienYCBTValue}`);
 
-      await textbox3.fill('');
-      await textbox3.fill('1000000');
-      console.log('Đã nhập 1000000 vào textbox thứ 3.');
+      await hangMucTuChoiInput.fill('');
+      await hangMucTuChoiInput.fill('1000000');
+      console.log('Đã nhập 1000000 vào cột "Hạng mục từ chối".');
 
-      await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
-        .toBe(textbox6Value - 1000000);
+      await expect.poll(async () => toNumber(await thanhToanInput.inputValue()), { timeout: 10000 })
+        .toBe(tienYCBTValue - 1000000);
       await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
-        .toBe(textbox6Value - 1000000);
+        .toBe(tienYCBTValue - 1000000);
       await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
         .toBe(1000000);
-      // await textbox4.fill('');
-      // await textbox4.fill('500000');
-      // console.log('Đã nhập 500000 vào textbox thứ 4.');
+      // const tuChoiKhacInput = await cellInput('Từ chối khác');
+      // await tuChoiKhacInput.fill('');
+      // await tuChoiKhacInput.fill('500000');
+      // console.log('Đã nhập 500000 vào cột "Từ chối khác".');
 
-      // await expect.poll(async () => toNumber(await textbox7.inputValue()), { timeout: 10000 })
-      //   .toBe(textbox6Value - 1500000);
+      // await expect.poll(async () => toNumber(await thanhToanInput.inputValue()), { timeout: 10000 })
+      //   .toBe(tienYCBTValue - 1500000);
       // await expect.poll(async () => toNumber(await totalText.textContent()), { timeout: 10000 })
-      //   .toBe(textbox6Value - 1500000);
+      //   .toBe(tienYCBTValue - 1500000);
       // await expect.poll(async () => toNumber(await rejectText.textContent()), { timeout: 10000 })
       //   .toBe(1500000);
     })

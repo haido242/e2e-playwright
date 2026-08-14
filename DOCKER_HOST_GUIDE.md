@@ -142,11 +142,14 @@ chmod +x manage-report.sh
 ./manage-report.sh status
 ```
 
+> **Đã đổi:** report không còn host bằng container nginx. Nay dùng
+> `npx http-server` trỏ vào `artifacts/runs/`, quản lý bằng `./manage-report.sh`.
+> Xem mục "Kho lịch sử các lần chạy" trong readme.md.
+
 Output:
 ```
-✅ Report server is RUNNING
-NAMES                      STATUS              PORTS
-playwright-report-server   Up 5 minutes        0.0.0.0:9323->80/tcp
+✅ Server ĐANG CHẠY (PID 12345)
+📦 Số lần chạy trong kho: 3
 ```
 
 ### Xem logs
@@ -205,34 +208,17 @@ docker run --rm \
   haido2402/e2e-playwright-e2e:latest --project=tpa-chrome
 ```
 
-### Start report server thủ công
+### Start / stop / xem logs report server
+
+> **Đã đổi:** report không còn host bằng container nginx. Nay dùng
+> `npx http-server` trỏ vào `artifacts/runs/`, quản lý bằng `./manage-report.sh`.
+> Xem mục "Kho lịch sử các lần chạy" trong readme.md.
 
 ```bash
-docker run -d \
-  --name playwright-report-server \
-  -p 9323:80 \
-  -v "$(pwd)/artifacts/playwright-report:/usr/share/nginx/html:ro" \
-  --restart unless-stopped \
-  nginx:alpine
-```
-
-### Stop report server
-
-```bash
-docker stop playwright-report-server
-docker rm playwright-report-server
-```
-
-### Xem logs
-
-```bash
-docker logs -f playwright-report-server
-```
-
-### Kiểm tra server đang chạy
-
-```bash
-docker ps | grep playwright-report-server
+./manage-report.sh start
+./manage-report.sh stop
+./manage-report.sh logs
+./manage-report.sh status
 ```
 
 ---
@@ -298,16 +284,14 @@ curl -I http://localhost:9323
 # HTTP/1.1 200 OK → Server đang chạy
 ```
 
-### Xem resource usage
+### Xem resource usage / logs realtime
+
+> **Đã đổi:** report không còn host bằng container nginx. Nay dùng
+> `npx http-server` trỏ vào `artifacts/runs/`, quản lý bằng `./manage-report.sh`.
+> Xem mục "Kho lịch sử các lần chạy" trong readme.md.
 
 ```bash
-docker stats playwright-report-server
-```
-
-### Xem logs realtime
-
-```bash
-docker logs -f playwright-report-server --tail 100
+./manage-report.sh logs
 ```
 
 ---
@@ -316,15 +300,19 @@ docker logs -f playwright-report-server --tail 100
 
 ### Report server không start
 
+> **Đã đổi:** report không còn host bằng container nginx. Nay dùng
+> `npx http-server` trỏ vào `artifacts/runs/`, quản lý bằng `./manage-report.sh`.
+> Xem mục "Kho lịch sử các lần chạy" trong readme.md.
+
 ```bash
 # Kiểm tra port có bị chiếm không
 sudo lsof -i :9323
 
-# Kiểm tra report directory có tồn tại không
-ls -la artifacts/playwright-report/
+# Kiểm tra thư mục kho có tồn tại không
+ls -la artifacts/runs/
 
 # Xem logs chi tiết
-docker logs playwright-report-server
+./manage-report.sh logs
 ```
 
 ### Port bị chiếm

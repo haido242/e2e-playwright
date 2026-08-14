@@ -21,7 +21,9 @@ export default defineConfig({
   ],
   use: {
     headless: true,
-    trace: 'on', // Tắt trace để không ghi lại sensitive data
+    // 'on' làm teardown treo tới hết timeout khi trang còn kết nối mở (vd. sau khi tạo folder).
+    // 'retain-on-failure' vẫn giữ trace để debug test fail, và khớp với ý định không ghi sensitive data.
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'on',
     navigationTimeout: 30000, // Timeout cho navigation
