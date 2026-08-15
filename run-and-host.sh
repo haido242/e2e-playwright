@@ -61,6 +61,7 @@ echo -e "${BLUE}🧪 Running E2E Tests${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 docker run --rm \
+  --network host \
   --env-file .env \
   -v "${ARTIFACT_DIR}:/artifacts" \
   -v "${PROJECT_DIR}/tests:/runner/tests" \
