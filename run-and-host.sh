@@ -119,7 +119,11 @@ if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo -e "\n${GREEN}✅ Report server đang chạy sẵn${NC}"
 else
     echo -e "\n${YELLOW}🌐 Khởi động report server...${NC}"
-    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 &
+    # 200>&-: đóng fd của .run.lock trước khi exec. report server chạy nền vĩnh
+    # viễn qua nohup (cố ý không giết ở lần chạy sau) — nếu không đóng, nó kế
+    # thừa fd 200 và giữ flock mãi mãi, khiến MỌI lần chạy script sau treo vô
+    # thời hạn chờ lock dù không có lần chạy nào khác thực sự đang diễn ra.
+    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 200>&- &
     echo $! > "$PID_FILE"
     sleep 2
     if kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
