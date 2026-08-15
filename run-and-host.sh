@@ -116,7 +116,15 @@ fi
 
 # Khởi động server nếu chưa chạy. Không giết server cũ: link team đang mở vẫn sống.
 if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-    echo -e "\n${GREEN}✅ Report server đang chạy sẵn${NC}"
+    echo -e "\n${GREEN}✅ Report server đang chạy sẵn (PID $(cat "$PID_FILE"))${NC}"
+elif (exec 3<>"/dev/tcp/127.0.0.1/${REPORT_PORT}") 2>/dev/null; then
+    # PID_FILE thiếu/trỏ tới PID đã chết, nhưng cổng vẫn có ai đó đang lắng nghe —
+    # gần như chắc chắn là report server thật (chạy từ một lần trước, PID_FILE đã
+    # bị lần chạy fail nào đó ghi đè mất manh mối). KHÔNG spawn thêm (sẽ chỉ ăn
+    # EADDRINUSE) và KHÔNG đụng vào PID_FILE — ghi đè lúc này sẽ xóa nốt manh mối
+    # cuối, khiến mọi lần chạy sau lặp lại đúng lỗi "poisoned PID" này mãi mãi.
+    exec 3>&- 3<&-
+    echo -e "\n${YELLOW}⚠️  Cổng ${REPORT_PORT} đã có tiến trình khác lắng nghe (PID_FILE không khớp) — coi report server đã sẵn sàng, không spawn thêm.${NC}"
 else
     echo -e "\n${YELLOW}🌐 Khởi động report server...${NC}"
     # 200>&-: đóng fd của .run.lock trước khi exec. report server chạy nền vĩnh
@@ -124,10 +132,14 @@ else
     # thừa fd 200 và giữ flock mãi mãi, khiến MỌI lần chạy script sau treo vô
     # thời hạn chờ lock dù không có lần chạy nào khác thực sự đang diễn ra.
     nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 200>&- &
-    echo $! > "$PID_FILE"
+    NEW_PID=$!
     sleep 2
-    if kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-        echo -e "${GREEN}✅ Report server đã chạy${NC}"
+    if kill -0 "$NEW_PID" 2>/dev/null; then
+        # Chỉ ghi PID_FILE SAU KHI xác nhận spawn thành công — nếu ghi trước (echo $!
+        # ngay khi vừa nohup) rồi spawn fail, PID chết đó đè mất PID hợp lệ đang chạy
+        # từ lần trước, "đầu độc" PID_FILE cho mọi lần chạy sau (xem 2 nhánh trên).
+        echo "$NEW_PID" > "$PID_FILE"
+        echo -e "${GREEN}✅ Report server đã chạy (PID $NEW_PID)${NC}"
     else
         echo -e "${RED}❌ Không khởi động được report server, xem $LOG_FILE${NC}"
     fi
