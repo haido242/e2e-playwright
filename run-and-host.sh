@@ -133,7 +133,12 @@ else
     fi
 fi
 
-SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+# "hostname -I" trả về IP nội bộ của container Jenkins (vd 172.17.0.2) khi script này
+# chạy như một bước "sh" trong Jenkins pipeline, không phải IP LAN thật của host — chỉ
+# dùng nó làm fallback cuối cùng. Ưu tiên REPORT_HOST (LAN IP cố định của host, cho phép
+# máy khác trong mạng truy cập report), có thể override qua biến môi trường nếu cần.
+SERVER_IP="${REPORT_HOST:-192.168.3.101}"
+[ -z "$SERVER_IP" ] && SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 [ -z "$SERVER_IP" ] && SERVER_IP="localhost"
 
 echo -e "\n${BLUE}=========================================${NC}"
