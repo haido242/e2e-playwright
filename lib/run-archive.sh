@@ -46,6 +46,12 @@ archive_run() {
     if [ -d "${staging_dir}/playwright-report/data" ]; then
       mv "${staging_dir}/playwright-report/data" "${run_dir}/data"
     fi
+    # trace/ chứa app viewer để mở file .zip trong data/ (index.html trỏ tới
+    # trace/index.html?trace=...) — thiếu bước này thì link "View trace" 404 dù
+    # file .zip trace vẫn còn nguyên trong data/.
+    if [ -d "${staging_dir}/playwright-report/trace" ]; then
+      mv "${staging_dir}/playwright-report/trace" "${run_dir}/trace"
+    fi
   fi
   rm -rf "${staging_dir}/playwright-report"
 
