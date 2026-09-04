@@ -133,20 +133,43 @@ if [ -f "${RUN_DIR}/results.xml" ]; then
     echo -e "  📝 Total:  $TOTAL"
 fi
 
-# Sinh cert tự ký nếu chưa có (SAN theo SERVER_IP — xem giải thích Service Worker ở đầu
-# file). "openssl x509 -checkend" coi cert còn hạn <30 ngày là cần sinh lại luôn, tránh
-# report server chạy vĩnh viễn (nohup) rồi một ngày cert hết hạn mà không ai để ý.
+# Sinh cert nếu chưa có (SAN theo SERVER_IP — xem giải thích Service Worker ở đầu file).
+# "openssl x509 -checkend" coi cert còn hạn <30 ngày là cần sinh lại luôn, tránh report
+# server chạy vĩnh viễn (nohup) rồi một ngày cert hết hạn mà không ai để ý.
+#
+# Dùng mkcert (CA riêng, KHÔNG phải openssl self-signed thô): cert self-signed thô trước
+# đây khiến trình duyệt chỉ "trust" trang HTML chính khi bấm Proceed, nhưng Service Worker
+# của Playwright trace viewer (bắt buộc để đọc file .zip trace) áp dụng kiểm tra chứng chỉ
+# NGHIÊM NGẶT HƠN và luôn từ chối cert không nằm trong root trust store thật — dẫn tới lỗi
+# "SecurityError: Failed to register a ServiceWorker ... SSL certificate error" và trace
+# viewer hiện màn hình xám dù trang report vẫn load bình thường. mkcert ký cert bằng một CA
+# cục bộ (~/.local/share/mkcert/rootCA.pem) — mỗi máy trong team CHỈ CẦN cài file rootCA.pem
+# đó vào trust store MỘT LẦN (không phải bấm Proceed mỗi cert/mỗi lần hết hạn), sau đó mọi
+# cert mkcert ký cho host này được trình duyệt tin cậy thật, kể cả Service Worker.
+#
+# Hardcode /home/guess2 thay vì dựa vào $HOME: khi script này chạy qua Jenkins pipeline
+# (sh step bên trong container jenkins), $HOME là /var/jenkins_home chứ không phải
+# /home/guess2 — dựa vào $HOME sẽ khiến pipeline luôn không thấy mkcert, âm thầm rơi về
+# nhánh openssl self-signed thô ở dưới (mất tác dụng fix Service Worker/gray-screen).
+CAROOT="${CAROOT:-/home/guess2/.local/share/mkcert}"
+MKCERT_BIN="${MKCERT_BIN:-/home/guess2/.local/bin/mkcert}"
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ] || ! openssl x509 -in "$CERT_FILE" -checkend 2592000 >/dev/null 2>&1; then
     mkdir -p "$TLS_DIR"
-    if echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-        SAN="subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${SERVER_IP}"
+    if [ -x "$MKCERT_BIN" ]; then
+        CAROOT="$CAROOT" "$MKCERT_BIN" -cert-file "$CERT_FILE" -key-file "$KEY_FILE" \
+            "$SERVER_IP" localhost 127.0.0.1
     else
-        SAN="subjectAltName=DNS:localhost,IP:127.0.0.1"
-        [ "$SERVER_IP" != "localhost" ] && SAN="${SAN},DNS:${SERVER_IP}"
+        echo -e "${YELLOW}⚠️  Không tìm thấy mkcert ($MKCERT_BIN) — fallback openssl self-signed thô (trace viewer sẽ bị màn hình xám do Service Worker).${NC}"
+        if echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+            SAN="subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${SERVER_IP}"
+        else
+            SAN="subjectAltName=DNS:localhost,IP:127.0.0.1"
+            [ "$SERVER_IP" != "localhost" ] && SAN="${SAN},DNS:${SERVER_IP}"
+        fi
+        openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+            -keyout "$KEY_FILE" -out "$CERT_FILE" \
+            -subj "/CN=${SERVER_IP}" -addext "$SAN" 2>/dev/null
     fi
-    openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
-        -keyout "$KEY_FILE" -out "$CERT_FILE" \
-        -subj "/CN=${SERVER_IP}" -addext "$SAN" 2>/dev/null
 fi
 
 # Khởi động server nếu chưa chạy. Không giết server cũ: link team đang mở vẫn sống.
@@ -185,7 +208,7 @@ fi
 echo -e "\n${BLUE}=========================================${NC}"
 echo -e "${GREEN}✅ Kho lịch sử:${NC}  ${YELLOW}https://${SERVER_IP}:${REPORT_PORT}/${NC}"
 echo -e "${GREEN}✅ Lần chạy này:${NC} ${YELLOW}https://${SERVER_IP}:${REPORT_PORT}/${RUN_ID}/${NC}"
-echo -e "${YELLOW}⚠️  Cert tự ký — trình duyệt sẽ cảnh báo \"không an toàn\", bấm Advanced/Proceed để vào (chỉ cần làm 1 lần/máy).${NC}"
+echo -e "${YELLOW}⚠️  Cert do mkcert ký (không phải self-signed thô) — máy nào CHƯA cài rootCA sẽ vẫn thấy cảnh báo \"không an toàn\", và bấm Proceed KHÔNG đủ để xem được trace (Service Worker của trace viewer sẽ vẫn chặn). Cài file rootCA.pem (${CAROOT}/rootCA.pem) vào trust store của trình duyệt/OS — chỉ cần làm 1 LẦN DUY NHẤT mỗi máy, sau đó mọi report/trace tại host này tự động được tin cậy.${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 echo -e "\n${BLUE}💡 Lệnh hữu ích:${NC}"
