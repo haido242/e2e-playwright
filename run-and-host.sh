@@ -5,6 +5,13 @@
 # Chạy test, lưu kết quả thành một lần chạy riêng, rồi host kho lịch sử
 # Usage: ./run-and-host.sh [PROJECT_NAME]
 # Example: ./run-and-host.sh tpa-chrome
+#
+# REPORT_HOST (biến môi trường, không phải tham số CLI — xem chỗ tính SERVER_IP bên dưới):
+# host dùng trong link báo cáo VÀ trong SAN của cert TLS tự ký. Playwright trace viewer dùng
+# Service Worker để nạp dữ liệu trace — trình duyệt CHỈ cho Service Worker đăng ký trên secure
+# context (https://, hoặc http://localhost/127.0.0.1). Truy cập qua IP LAN thường bằng http://
+# (như trước đây) khiến trace viewer hiện màn hình xám vì Service Worker bị chặn âm thầm — nên
+# report server phải chạy HTTPS (tự ký) khi SERVER_IP là IP thật, không phải localhost.
 #####################################################
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -18,8 +25,20 @@ PID_FILE="${ARTIFACT_DIR}/.report-server.pid"
 LOG_FILE="${ARTIFACT_DIR}/.report-server.log"
 LOCK_FILE="${ARTIFACT_DIR}/.run.lock"
 HTTP_SERVER="${PROJECT_DIR}/node_modules/.bin/http-server"
+TLS_DIR="${ARTIFACT_DIR}/.tls"
+CERT_FILE="${TLS_DIR}/cert.pem"
+KEY_FILE="${TLS_DIR}/key.pem"
 
 PROJECT_NAME="${1:-tpa-chrome}"
+
+# "hostname -I" trả về IP nội bộ của container Jenkins (vd 172.17.0.2) khi script này
+# chạy như một bước "sh" trong Jenkins pipeline, không phải IP LAN thật của host — chỉ
+# dùng nó làm fallback. Ưu tiên biến môi trường REPORT_HOST (LAN IP cố định của host, cho
+# phép máy khác trong mạng truy cập report), override được nếu cần. Tính SỚM (trước khi
+# start server) vì cert TLS tự ký bên dưới cần SAN đúng theo IP này.
+SERVER_IP="${REPORT_HOST:-192.168.3.101}"
+[ -z "$SERVER_IP" ] && SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[ -z "$SERVER_IP" ] && SERVER_IP="localhost"
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
@@ -114,6 +133,22 @@ if [ -f "${RUN_DIR}/results.xml" ]; then
     echo -e "  📝 Total:  $TOTAL"
 fi
 
+# Sinh cert tự ký nếu chưa có (SAN theo SERVER_IP — xem giải thích Service Worker ở đầu
+# file). "openssl x509 -checkend" coi cert còn hạn <30 ngày là cần sinh lại luôn, tránh
+# report server chạy vĩnh viễn (nohup) rồi một ngày cert hết hạn mà không ai để ý.
+if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ] || ! openssl x509 -in "$CERT_FILE" -checkend 2592000 >/dev/null 2>&1; then
+    mkdir -p "$TLS_DIR"
+    if echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+        SAN="subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${SERVER_IP}"
+    else
+        SAN="subjectAltName=DNS:localhost,IP:127.0.0.1"
+        [ "$SERVER_IP" != "localhost" ] && SAN="${SAN},DNS:${SERVER_IP}"
+    fi
+    openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+        -keyout "$KEY_FILE" -out "$CERT_FILE" \
+        -subj "/CN=${SERVER_IP}" -addext "$SAN" 2>/dev/null
+fi
+
 # Khởi động server nếu chưa chạy. Không giết server cũ: link team đang mở vẫn sống.
 if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo -e "\n${GREEN}✅ Report server đang chạy sẵn (PID $(cat "$PID_FILE"))${NC}"
@@ -126,12 +161,14 @@ elif (exec 3<>"/dev/tcp/127.0.0.1/${REPORT_PORT}") 2>/dev/null; then
     exec 3>&- 3<&-
     echo -e "\n${YELLOW}⚠️  Cổng ${REPORT_PORT} đã có tiến trình khác lắng nghe (PID_FILE không khớp) — coi report server đã sẵn sàng, không spawn thêm.${NC}"
 else
-    echo -e "\n${YELLOW}🌐 Khởi động report server...${NC}"
+    echo -e "\n${YELLOW}🌐 Khởi động report server (HTTPS)...${NC}"
     # 200>&-: đóng fd của .run.lock trước khi exec. report server chạy nền vĩnh
     # viễn qua nohup (cố ý không giết ở lần chạy sau) — nếu không đóng, nó kế
     # thừa fd 200 và giữ flock mãi mãi, khiến MỌI lần chạy script sau treo vô
     # thời hạn chờ lock dù không có lần chạy nào khác thực sự đang diễn ra.
-    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 --silent > "$LOG_FILE" 2>&1 200>&- &
+    # -S -C -K: HTTPS bằng cert tự ký ở trên — bắt buộc để Service Worker của trace
+    # viewer hoạt động khi truy cập qua IP LAN (xem giải thích ở đầu file).
+    nohup "$HTTP_SERVER" "$RUNS_DIR" -p "$REPORT_PORT" -c-1 -S -C "$CERT_FILE" -K "$KEY_FILE" --silent > "$LOG_FILE" 2>&1 200>&- &
     NEW_PID=$!
     sleep 2
     if kill -0 "$NEW_PID" 2>/dev/null; then
@@ -145,17 +182,10 @@ else
     fi
 fi
 
-# "hostname -I" trả về IP nội bộ của container Jenkins (vd 172.17.0.2) khi script này
-# chạy như một bước "sh" trong Jenkins pipeline, không phải IP LAN thật của host — chỉ
-# dùng nó làm fallback cuối cùng. Ưu tiên REPORT_HOST (LAN IP cố định của host, cho phép
-# máy khác trong mạng truy cập report), có thể override qua biến môi trường nếu cần.
-SERVER_IP="${REPORT_HOST:-192.168.3.101}"
-[ -z "$SERVER_IP" ] && SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-[ -z "$SERVER_IP" ] && SERVER_IP="localhost"
-
 echo -e "\n${BLUE}=========================================${NC}"
-echo -e "${GREEN}✅ Kho lịch sử:${NC}  ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}/${NC}"
-echo -e "${GREEN}✅ Lần chạy này:${NC} ${YELLOW}http://${SERVER_IP}:${REPORT_PORT}/${RUN_ID}/${NC}"
+echo -e "${GREEN}✅ Kho lịch sử:${NC}  ${YELLOW}https://${SERVER_IP}:${REPORT_PORT}/${NC}"
+echo -e "${GREEN}✅ Lần chạy này:${NC} ${YELLOW}https://${SERVER_IP}:${REPORT_PORT}/${RUN_ID}/${NC}"
+echo -e "${YELLOW}⚠️  Cert tự ký — trình duyệt sẽ cảnh báo \"không an toàn\", bấm Advanced/Proceed để vào (chỉ cần làm 1 lần/máy).${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 echo -e "\n${BLUE}💡 Lệnh hữu ích:${NC}"

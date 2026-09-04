@@ -294,9 +294,13 @@ npx playwright test --headed
 Mỗi lần `./run-and-host.sh <project>` sẽ lưu kết quả thành một thư mục riêng trong
 `artifacts/runs/<YYYY-MM-DD_HHMMSS_project>/` và sinh lại trang danh sách.
 
-- Danh sách mọi lần chạy: `http://<server>:9323/`
-- Một lần chạy cụ thể: `http://<server>:9323/<run-id>/` — URL này không bao giờ đổi,
+- Danh sách mọi lần chạy: `https://<server>:9323/`
+- Một lần chạy cụ thể: `https://<server>:9323/<run-id>/` — URL này không bao giờ đổi,
   dán vào ticket được.
+- Cert tự ký (self-signed) — lần đầu mở trên mỗi trình duyệt sẽ bị cảnh báo "không an
+  toàn", bấm Advanced/Proceed để tiếp tục (chỉ 1 lần). Bắt buộc phải là `https://` (không
+  phải `http://`) vì trace viewer dùng Service Worker, thứ trình duyệt chỉ cho hoạt động
+  trên secure context (`https://` hoặc `http://localhost`).
 
 Video và trace chỉ giữ cho **20 lần chạy gần nhất** (`KEEP_ATTACHMENTS` trong
 `run-and-host.sh`). Các lần cũ hơn vẫn mở được báo cáo — tên test, từng bước, thông báo
