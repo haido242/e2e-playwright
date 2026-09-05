@@ -418,12 +418,18 @@ test('Màn xác nhận', async ({ page }) => {
     // })
 
     await test.step('Kiểm tra nhập tỷ lệ giảm trừ', async () => {
+      // count() là snapshot tức thời, KHÔNG auto-wait: sau khi chọn quyền lợi, bảng Chi Phí
+      // re-render (backend tính lại chi phí) nên ngay khoảnh khắc này tbody thường chưa có
+      // row -> count()===0 -> step tự bỏ qua dù quyền lợi đã chọn xong. Trước đây waitFor
+      // nằm SAU count() nên không bao giờ chạy tới. Phải chờ row xuất hiện trước, chỉ kết
+      // luận "không có dòng quyền lợi" khi đã chờ hết timeout mà vẫn không thấy.
       const benefitRow = page.locator('tbody .ant-table-row').first();
-      if ((await benefitRow.count()) === 0) {
+      try {
+        await benefitRow.waitFor({ state: 'visible', timeout: 30000 });
+      } catch {
         console.log('Không có dòng quyền lợi trong bảng Chi Phí, bỏ qua kiểm tra Hạng mục từ chối.');
         return;
       }
-      await benefitRow.waitFor({ state: 'visible', timeout: 30000 });
       const hangMucTuChoiInput = page.getByRole('textbox').nth(9);
 
       // clear input trước
