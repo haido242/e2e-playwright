@@ -96,9 +96,9 @@ const uploadTestFunction = async ({ page }: { page: any }) => {
   console.log('Dialog tải lên đã xuất hiện.');
   
   // Tải file lên
-  const filePath = require('path').resolve(__dirname, '../fixtures/790054.pdf');
+  const filePath = require('path').resolve(__dirname, '../fixtures/907064.pdf');
   console.log(`File path resolved: ${filePath}`);
-  
+
   // Kiểm tra file có tồn tại không
   const fs = require('fs');
   const fileExists = fs.existsSync(filePath);
@@ -322,7 +322,7 @@ test('Màn xác nhận', async ({ page }) => {
     const costTabSelector = 'div[role="tab"]:has-text("Chi Phí")';
     await page.click(costTabSelector);
     // Chờ tab chi phí load xong hoàn toàn trước khi thao tác bảng
-    await expect(page.locator('button:has-text("Xác nhận chi phí")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('button:has-text("Xác nhận chi phí")')).toBeVisible({ timeout: 180000 });
     // App poll GET .../expenses/status mỗi ~3s, trả 404 tới khi backend tính xong chi phí;
     // trong lúc đó panel giữ nguyên spinner. Việc này có thể mất vài phút.
     await page.waitForSelector('.ant-spin-spinning', { state: 'detached', timeout: 180000 });
@@ -338,32 +338,60 @@ test('Màn xác nhận', async ({ page }) => {
       const benefitSelect = benefitHeader.locator('.ant-select.cell__select').first();
       const benefitSelector = benefitSelect.locator('.ant-select-selector');
       await benefitSelector.waitFor({ state: 'visible', timeout: 10000 });
+
+      // Chờ Select nạp xong danh sách quyền lợi TRƯỚC khi mở dropdown. Trước đây chỗ này
+      // chỉ check spinner SAU khi đã click option — quá muộn: option render ra rồi vẫn bị
+      // thay thế khi request options trả về, nên click luôn trượt với
+      // "element is not stable" -> "element was detached from the DOM, retrying" và lặp
+      // tới khi hết timeout của cả test (600s).
+      const loadingArrow = benefitSelect.locator('.ant-select-arrow-loading');
+      await loadingArrow.waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {});
+
       await benefitSelector.click({ force: true });
 
-      const dropdown = page.locator('.ant-select-dropdown').last();
+      const dropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)').last();
       await dropdown.waitFor({ state: 'visible', timeout: 10000 });
 
-      const firstBenefitOption = dropdown
+      const benefitOptions = dropdown
         .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
-        .filter({ hasNotText: 'Không có dữ liệu' })
-        .first();
-      // 
+        .filter({ hasNotText: 'Không có dữ liệu' });
+
+      // Danh sách vẫn có thể re-render sau khi dropdown mở (AntD dùng virtual list, và
+      // request options có thể trả về muộn). Chờ số option ổn định qua 2 lần đo liên tiếp
+      // thì DOM mới thực sự đứng yên để click được.
+      let stableCount = -1;
+      for (let i = 0; i < 30; i++) {
+        const count = await benefitOptions.count();
+        if (count > 0 && count === stableCount) break;
+        stableCount = count;
+        await page.waitForTimeout(500);
+      }
+
+      const firstBenefitOption = benefitOptions.first();
       await expect(firstBenefitOption).toBeVisible({ timeout: 10000 });
-      if ((await firstBenefitOption.count()) > 0) {
-        await firstBenefitOption.click();
+      if ((await benefitOptions.count()) > 0) {
+        // Chọn bằng bàn phím thay vì click: option đang ở trạng thái
+        // ant-select-item-option-active nên Enter chọn đúng nó, và cách này không phụ
+        // thuộc vào việc element có bị AntD thay thế giữa lúc click hay không.
+        await page.keyboard.press('Enter');
+
         const selectedBenefit = benefitSelect.locator('.ant-select-selection-item').first();
-        await expect(selectedBenefit).toBeVisible();
+        // Nếu Enter không ăn (dropdown chưa có option active), fallback về click có retry.
+        try {
+          await expect(selectedBenefit).toBeVisible({ timeout: 10000 });
+        } catch {
+          console.log('Enter không chọn được quyền lợi, thử click trực tiếp...');
+          await firstBenefitOption.click({ force: true, timeout: 30000 });
+          await expect(selectedBenefit).toBeVisible({ timeout: 10000 });
+        }
         await expect(selectedBenefit).toHaveAttribute('title', /.+/);
         console.log('Đã mở dropdown quyền lợi và chọn quyền lợi đầu tiên.');
       } else {
         console.log('Không thấy dropdown quyền lợi, tiếp tục với trạng thái mặc định sau khi thêm mới.');
       }
 
-      const spinnerLocator = page.locator('.ant-select-arrow.ant-select-arrow-loading').first();
-      if ((await spinnerLocator.count()) > 0) {
-        await spinnerLocator.waitFor({ state: 'hidden', timeout: 10000 });
-        console.log('Spinner thêm quyền lợi đã biến mất.');
-      }
+      // Sau khi chọn, Select có thể gọi API lưu quyền lợi -> spinner xuất hiện lại.
+      await loadingArrow.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
     })
 
     // await test.step('Kiểm tra nhập Tiền YCBT tổng hợp chi phí chung', async () => {
